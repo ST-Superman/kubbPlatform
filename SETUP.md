@@ -1,12 +1,14 @@
 # Kubb Platform — Phase 0 Setup
 
-The web platform for competitive kubb. **Phase 0 (Foundations)** is scaffolded:
-Next.js + TypeScript + Tailwind v4 + shadcn/ui, the Supabase SSR auth wiring, an
-app shell on the Kubb Coach design tokens (light/dark), and a full email
-sign-up / sign-in / sign-out flow with a protected `/dashboard` route.
+The web platform for competitive kubb. **Phase 0 (Foundations) is complete** ✅ —
+verified locally and in production. It includes: Next.js + TypeScript + Tailwind
+v4 + shadcn/ui, the Supabase SSR auth wiring, an app shell on the Kubb Coach
+design tokens (light/dark), and a full email sign-up / sign-in / sign-out flow
+with a protected `/dashboard` route.
 
 The code is done — these steps connect it to your own Supabase project and Vercel.
-None of them require touching the code.
+None of them require touching the code. If you're setting this up fresh, read the
+**Troubleshooting** section (§5) first — it lists the exact snags we hit.
 
 ## Stack
 
@@ -61,9 +63,42 @@ Verify the Phase 0 acceptance checks:
 2. https://vercel.com → **Add New → Project** → import the repo. Framework
    auto-detects as Next.js.
 3. Add the two env vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
-   in the Vercel project settings.
-4. Deploy. Then add the deployed `https://…vercel.app` URL to Supabase
-   **Site URL / Redirect URLs** so email confirmation works in production.
+   in the Vercel project settings. **Use the base Project URL** (see §5.1) — not the
+   `/rest/v1` one.
+4. Deploy. If you later change an env var, **redeploy** — Vercel does not rebuild
+   automatically on env changes (Deployments → ⋯ → Redeploy).
+5. **Deployment Protection:** new Vercel projects gate the whole site behind "Vercel
+   Authentication," so every route 302-redirects to Vercel SSO and only you can see
+   it. To make production public: **Project → Settings → Deployment Protection** →
+   turn off Vercel Authentication (or set it to protect *Preview only*).
+6. (Only if you re-enable email confirmation) add the deployed `https://…vercel.app`
+   URL to Supabase **Site URL / Redirect URLs**.
+
+## 5. Troubleshooting (snags we actually hit)
+
+### 5.1 "Invalid path specified in request URL" on signup
+
+`NEXT_PUBLIC_SUPABASE_URL` must be the **base Project URL**
+(`https://<ref>.supabase.co`) — *not* the Data API / RESTful endpoint
+(`…/rest/v1`) and no trailing slash. The client appends its own paths, so an extra
+path produces `…/rest/v1/auth/v1/signup` → this error. The app now normalizes the
+URL to its origin (`src/lib/supabase/env.ts`), but set it correctly anyway.
+
+### 5.2 No confirmation email / the old link stopped working
+
+- Confirmation links **expire and are single-use** — an old one will stop working.
+- Supabase's **built-in email service is heavily rate-limited** (a few/hour, for
+  testing only), so re-registering an existing unconfirmed address often sends
+  nothing.
+- **For the spike, turn email confirmation OFF** (Authentication → Sign In /
+  Providers → Email → uncheck "Confirm email"). Then delete any stuck unconfirmed
+  user (Authentication → Users) and re-register — you'll be signed in instantly, no
+  email involved. Wire real SMTP (Resend/Postmark) later when confirmation matters.
+
+### 5.3 Env changes don't take effect
+
+`.env.local` is read **only at server startup** — restart `npm run dev` after
+editing it. On Vercel, changing an env var requires a **redeploy**.
 
 ## Project map
 
