@@ -1,26 +1,174 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains);
+  --font-heading: var(--font-fraunces);
+  --font-display: var(--font-fraunces);
+  --color-swedish-blue: var(--swedish-blue);
+  --color-gold: var(--swedish-gold);
+  --color-navy: var(--midnight-navy);
+  --color-forest: var(--dark-forest);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/*
+ * Design tokens from the Kubb Coach design system
+ * (design_handoff_kubb_platform_spike/tokens/*.css — source of truth).
+ * shadcn's semantic variables are mapped onto the kubb palette below.
+ */
+:root {
+  /* Kubb brand palette (raw) */
+  --swedish-blue: #006aa7;
+  --swedish-blue-deep: #004f7f;
+  --swedish-gold: #fecc02;
+  --gold-ink: #8a6700;
+  --forest-green: #59a44d;
+  --dark-forest: #1f6646;
+  --midnight-navy: #13254a;
+  --birch-wood: #d5c8b5;
+  --cream: #f5f1e6;
+  --orange-4m: #e08e27;
+
+  /* shadcn semantic tokens (light) */
+  --background: #faf8f3; /* paper */
+  --foreground: #13182b; /* text */
+  --card: #ffffff;
+  --card-foreground: #13182b;
+  --popover: #ffffff;
+  --popover-foreground: #13182b;
+  --primary: #006aa7; /* swedish blue */
+  --primary-foreground: #ffffff;
+  --secondary: #eeece4; /* paper-2 */
+  --secondary-foreground: #13254a;
+  --muted: #eeece4;
+  --muted-foreground: rgba(60, 60, 67, 0.68);
+  --accent: #eeece4;
+  --accent-foreground: #13254a;
+  --destructive: #c53030; /* miss */
+  --border: rgba(60, 60, 67, 0.2);
+  --input: rgba(60, 60, 67, 0.24);
+  --ring: #006aa7;
+  --chart-1: #006aa7;
+  --chart-2: #fecc02;
+  --chart-3: #1f6646;
+  --chart-4: #e08e27;
+  --chart-5: #7c6fa0;
+  --radius: 0.875rem; /* 14px — kubb button radius */
+  --sidebar: #f5f1e6;
+  --sidebar-foreground: #13182b;
+  --sidebar-primary: #006aa7;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eeece4;
+  --sidebar-accent-foreground: #13254a;
+  --sidebar-border: rgba(60, 60, 67, 0.2);
+  --sidebar-ring: #006aa7;
+}
+
+.dark {
+  --swedish-blue: #3b8fcc;
+  --swedish-gold: #fecc02;
+  --gold-ink: #fecc02;
+
+  --background: #111418; /* paper (dark) */
+  --foreground: #f5f5f7; /* text (dark) */
+  --card: #1c2028;
+  --card-foreground: #f5f5f7;
+  --popover: #1c2028;
+  --popover-foreground: #f5f5f7;
+  --primary: #2c82bf; /* brand blue, lifted for dark bg */
+  --primary-foreground: #ffffff;
+  --secondary: #1f232a;
+  --secondary-foreground: #f5f5f7;
+  --muted: #1a1c22;
+  --muted-foreground: rgba(255, 255, 255, 0.62);
+  --accent: #1f232a;
+  --accent-foreground: #f5f5f7;
+  --destructive: #e45252;
+  --border: rgba(255, 255, 255, 0.12);
+  --input: rgba(255, 255, 255, 0.16);
+  --ring: #3b8fcc;
+  --chart-1: #3b8fcc;
+  --chart-2: #fecc02;
+  --chart-3: #3ca66e;
+  --chart-4: #e08e27;
+  --chart-5: #9a8fc0;
+  --sidebar: #0e1216;
+  --sidebar-foreground: #f5f5f7;
+  --sidebar-primary: #3b8fcc;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1f232a;
+  --sidebar-accent-foreground: #f5f5f7;
+  --sidebar-border: rgba(255, 255, 255, 0.12);
+  --sidebar-ring: #3b8fcc;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* JetBrains Mono eyebrow / chip label — uppercase, tracked out */
+  .eyebrow {
+    font-family: var(--font-jetbrains), ui-monospace, monospace;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.11em;
+    font-size: 0.6875rem; /* 11px */
+    line-height: 1.2;
+  }
+  /* Fraunces display heading */
+  .display {
+    font-family: var(--font-fraunces), Georgia, serif;
+    letter-spacing: -0.02em;
+  }
 }
