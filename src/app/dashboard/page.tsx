@@ -1,6 +1,10 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { getMyProfile } from "@/lib/supabase/profiles";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -18,37 +22,52 @@ export default async function DashboardPage() {
   // Belt-and-suspenders: middleware already gates this route.
   if (!user) redirect("/login?redirectTo=/dashboard");
 
+  const profile = await getMyProfile();
+
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-16">
       <div>
         <span className="eyebrow text-muted-foreground">YOUR ACCOUNT</span>
-        <h1 className="display mt-2 text-3xl font-medium">Dashboard</h1>
+        <h1 className="display mt-2 text-3xl font-medium">
+          Welcome{profile ? `, ${profile.display_name}` : ""}
+        </h1>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Signed in</CardTitle>
+          <CardTitle>Your identity</CardTitle>
           <CardDescription>
-            The auth session reached a Server Component and RLS can see{" "}
-            <code className="font-mono text-xs">auth.uid()</code>.
+            Created automatically on signup by the{" "}
+            <code className="font-mono text-xs">handle_new_user</code> trigger.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-2 text-sm">
           <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Handle</span>
+            <span className="font-mono">
+              {profile ? `@${profile.handle}` : "—"}
+            </span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Display name</span>
+            <span className="font-medium">{profile?.display_name ?? "—"}</span>
+          </div>
+          <div className="flex justify-between gap-4">
             <span className="text-muted-foreground">Email</span>
             <span className="font-medium">{user.email}</span>
           </div>
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">User ID</span>
-            <span className="font-mono text-xs">{user.id}</span>
-          </div>
+          <Link
+            href="/profile"
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-2 w-fit")}
+          >
+            Edit profile
+          </Link>
         </CardContent>
       </Card>
 
       <p className="text-sm text-muted-foreground">
-        Next up (Phase 1): a <code className="font-mono text-xs">profiles</code>{" "}
-        row created on signup, editable handle and display name, and claimable
-        managed players.
+        Next up (Phase 1): Sign in with Apple, then claimable managed players so an
+        organizer can add someone by name and they can claim it later.
       </p>
     </div>
   );
