@@ -47,13 +47,13 @@ npm run dev                          # http://localhost:3000
 ```
 
 Verify the Phase 0 acceptance checks:
-- [ ] Home page renders in the kubb design system; theme toggle switches light/dark.
-- [ ] **Sign up** with an email + password (≥6 chars). With confirmation on,
+- [x] Home page renders in the kubb design system; theme toggle switches light/dark.
+- [x] **Sign up** with an email + password (≥6 chars). With confirmation on,
       click the emailed link; it should land you signed-in on `/dashboard`.
-- [ ] `/dashboard` shows your email + user id — proof the **auth session reached a
+- [x] `/dashboard` shows your email + user id — proof the **auth session reached a
       Server Component** and `auth.uid()` is available to RLS.
-- [ ] Visiting `/dashboard` while signed out redirects to `/login` (middleware gate).
-- [ ] **Sign out** returns you to home as a guest.
+- [x] Visiting `/dashboard` while signed out redirects to `/login` (middleware gate).
+- [x] **Sign out** returns you to home as a guest.
 
 ## 4. Deploy to Vercel (W1)
 
