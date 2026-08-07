@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { login } from "@/app/auth/actions";
 import { AuthForm } from "@/components/auth-form";
+import { OAuthButtons } from "@/components/oauth-buttons";
 import {
   Card,
   CardContent,
@@ -30,7 +31,15 @@ export default async function LoginPage() {
         </CardHeader>
         <CardContent>
           <Suspense>
-            <AuthForm mode="login" action={login} />
+            <div className="flex flex-col gap-5">
+              <OAuthButtons />
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="h-px flex-1 bg-border" />
+                OR
+                <span className="h-px flex-1 bg-border" />
+              </div>
+              <AuthForm mode="login" action={login} />
+            </div>
           </Suspense>
         </CardContent>
       </Card>

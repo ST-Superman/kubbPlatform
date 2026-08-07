@@ -100,28 +100,78 @@ URL to its origin (`src/lib/supabase/env.ts`), but set it correctly anyway.
 `.env.local` is read **only at server startup** — restart `npm run dev` after
 editing it. On Vercel, changing an env var requires a **redeploy**.
 
+## 6. Sign in with Apple (Phase 1 W6)
+
+The app code is done — an "Continue with Apple" button on `/login` + `/signup` and
+the `/auth/callback` route that exchanges the OAuth code for a session. Until you
+complete the config below, clicking it shows "Apple sign-in isn't configured yet."
+
+### 6.1 Apple Developer portal (developer.apple.com → Certificates, Identifiers & Profiles)
+
+Create four artifacts:
+
+1. **App ID** — an Identifier with **Sign in with Apple** capability enabled. Leave the
+   server-to-server notification endpoint blank (Supabase doesn't use it). You can reuse
+   the existing Kubb Coach App ID as the primary.
+2. **Services ID** — a separate Identifier (e.g. `coach.kubb.web`). This is your web
+   **Client ID**. Enable Sign in with Apple on it and configure **Website URLs**:
+   - **Domain:** `wynockzaeikgkntosqek.supabase.co`
+   - **Return URL:** `https://wynockzaeikgkntosqek.supabase.co/auth/v1/callback`
+3. **Sign in with Apple Key** — a Key with Sign in with Apple enabled; download the
+   `AuthKey_XXXXXXXXXX.p8` (one-time download) and note the **Key ID**.
+4. **Team ID** — the 10-char ID in the top-right of the Apple Developer console.
+
+### 6.2 Supabase → Authentication → Providers → Apple
+
+- Enable the provider.
+- **Client IDs:** your Services ID (e.g. `coach.kubb.web`).
+- **Secret Key:** generate it from the `.p8` + Team ID + Key ID + Services ID using the
+  generator linked right there in the Supabase Apple docs (keys never leave your browser).
+  ⚠️ Apple secrets expire — **regenerate every 6 months**.
+
+### 6.3 Supabase → Authentication → URL Configuration
+
+Add both app origins to **Redirect URLs** so Supabase can bounce back to `/auth/callback`:
+`http://localhost:3000/**` and your `https://…vercel.app/**`. (Apple only sees the
+Supabase callback URL from §6.1 — localhost testing still works because Supabase, not
+Apple, does the final redirect to your app.)
+
+### 6.4 Test
+
+`/login` → **Continue with Apple** → Apple consent → back to `/dashboard`, signed in.
+The `handle_new_user` trigger creates the profile just like an email signup.
+
 ## Project map
 
 ```
+supabase/
+  migrations/0001_identity.sql  # profiles/players/teams + trigger + RLS + backfill
 src/
   app/
     layout.tsx           # fonts (Fraunces/Inter/JetBrains Mono), theme, header
     page.tsx             # landing
-    login/page.tsx       # sign in
-    signup/page.tsx      # sign up
-    dashboard/page.tsx   # protected route
+    login/page.tsx       # sign in (Apple + email)
+    signup/page.tsx      # sign up (Apple + email)
+    dashboard/page.tsx   # protected; shows handle/display name
+    profile/page.tsx     # protected; view + edit profile
+    profile/actions.ts   # updateProfile server action
     error/page.tsx       # auth error fallback
     auth/
       actions.ts         # login / signup / signout server actions
       confirm/route.ts   # email link → verifyOtp → session
+      callback/route.ts  # OAuth (Apple) code → exchangeCodeForSession
   components/
     site-header.tsx      # auth-aware nav
     auth-form.tsx        # shared sign in / up form
+    oauth-buttons.tsx    # "Continue with Apple"
+    profile-form.tsx     # profile edit form
     theme-provider.tsx / theme-toggle.tsx
     ui/                  # shadcn components
   lib/supabase/
     client.ts            # browser client
     server.ts            # server-component / action client
+    env.ts               # URL/key normalizer
+    profiles.ts          # getMyProfile() + Profile type
     middleware.ts        # session refresh + route guard (helper)
   proxy.ts               # Next proxy convention (guard entry point)
 ```
