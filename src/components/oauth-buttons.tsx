@@ -7,10 +7,12 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 
-export function OAuthButtons() {
+export function OAuthButtons({ redirectTo }: { redirectTo?: string } = {}) {
   const [pending, setPending] = useState(false);
   const searchParams = useSearchParams();
-  const rawNext = searchParams.get("redirectTo") ?? "/dashboard";
+  // An explicit prop wins over the query string — the claim landing carries its
+  // token in the path, so it passes redirectTo directly.
+  const rawNext = redirectTo ?? searchParams.get("redirectTo") ?? "/dashboard";
   const next =
     rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard";
 

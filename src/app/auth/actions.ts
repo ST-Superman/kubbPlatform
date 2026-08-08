@@ -36,15 +36,27 @@ export async function signup(
 ): Promise<AuthState> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const redirectTo = safeRedirect(formData.get("redirectTo"));
 
   const origin = (await headers()).get("origin") ?? "";
   const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { emailRedirectTo: `${origin}/auth/confirm?next=/dashboard` },
+    options: {
+      emailRedirectTo: `${origin}/auth/confirm?next=${encodeURIComponent(redirectTo)}`,
+    },
   });
   if (error) return { error: error.message };
+
+  // With email confirmation disabled (spike setting), signUp returns a live
+  // session — send the user straight on so flows like the claim link (which pass
+  // ?redirectTo=/claim/<token>) survive signup. Otherwise fall back to the
+  // confirm-email message.
+  if (data.session) {
+    revalidatePath("/", "layout");
+    redirect(redirectTo);
+  }
 
   return {
     message:

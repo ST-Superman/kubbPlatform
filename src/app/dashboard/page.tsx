@@ -66,8 +66,12 @@ export default async function DashboardPage() {
       </Card>
 
       <p className="text-sm text-muted-foreground">
-        Next up (Phase 1): Sign in with Apple, then claimable managed players so an
-        organizer can add someone by name and they can claim it later.
+        Add someone by name on the{" "}
+        <Link href="/players" className="font-medium text-primary underline-offset-4 hover:underline">
+          Players
+        </Link>{" "}
+        page and share a claim link — they can claim the identity later and every
+        result recorded under it becomes theirs.
       </p>
     </div>
   );
