@@ -43,6 +43,12 @@ export async function SiteHeader() {
                 Dashboard
               </Link>
               <Link
+                href="/matches"
+                className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+              >
+                Matches
+              </Link>
+              <Link
                 href="/players"
                 className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
               >
