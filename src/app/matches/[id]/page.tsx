@@ -21,7 +21,7 @@ export default async function MatchPage({
   if (!state) notFound();
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-12">
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-12">
       <MatchClient matchId={id} initial={state} myUserId={user.id} />
     </div>
   );

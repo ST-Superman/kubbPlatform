@@ -23,6 +23,25 @@ export type GameState = {
 
 export type MatchStatus = "created" | "live" | "finished" | "abandoned";
 
+export type GameSummary = { game_number: number; winner: Side | null };
+
+export type TurnRow = {
+  seq: number;
+  side: Side;
+  voided: boolean;
+  batons_field: number;
+  batons_baseline: number;
+  baseline_kubbs: number;
+  base_kubb_double: boolean;
+  penalty_kubbs: number;
+  field_kubbs_left: number;
+  advantage_line: string | null;
+  king_shots: number;
+  king_hit: boolean;
+  king_hit_early: boolean;
+  throw_line: "8m" | "advantage";
+};
+
 export type MatchState = {
   match_id: string;
   race_to: number;
@@ -30,8 +49,11 @@ export type MatchState = {
   lag: { winner_side: Side | null; a: string | null; b: string | null };
   participants: Partial<Record<Side, Participant>>;
   games_won: Record<Side, number>;
+  games: GameSummary[];
   current_game_id: string | null;
   current_state: GameState | null;
+  current_turns: TurnRow[];
+  last_game_id: string | null;
   next_seq: number | null;
   undo_target: { game_id: string; seq: number } | null;
 };
