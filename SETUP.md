@@ -154,26 +154,45 @@ RPCs — but the auto REST API no longer leaks other people's matches. Apply wit
 `supabase db push`. (`profiles`/`players`/`teams` stay public: profiles + rosters are
 meant to be readable.)
 
-### 7.2 Turn on email confirmation + real SMTP
-The spike had confirmation OFF. To require verified emails:
-1. **Auth → Providers → Email:** enable **Confirm email**.
-2. **Auth → SMTP:** configure a real provider (Resend, Postmark, SES…) — sender
-   address + host/port/user/pass. The built-in mailer is rate-limited and unreliable;
-   don't ship on it.
-3. **Auth → URL Configuration:** Site URL = your production origin; add to the Redirect
-   allowlist your prod origin **and** `http://localhost:3000` (these cover
-   `/auth/callback` and `/auth/confirm`). Re-check the Apple provider redirect too (§6.3).
-4. **Auth → Email Templates → Confirm signup:** point the link at the SSR confirm route
-   so it uses the token_hash flow (not the implicit-fragment default):
-   ```
+### 7.2 Email confirmation + SMTP
+
+**Current stance (small invited group):** the spike runs with **Confirm email OFF**. That's fine
+while it's a handful of people you invite personally — RLS (§7.1) is what protects data; email
+verification mainly matters at scale. If you want light verification now, you *can* enable Confirm
+email on Supabase's **built-in mailer** (no SMTP setup) — it's rate-limited to a few emails/hour,
+acceptable for a tiny group. **Custom SMTP below is deferred until a domain is secured.**
+
+The app code already supports the confirmed-email flow either way: `auth/actions.ts signup` returns
+a "check your email" message when signup yields no session, and `auth/confirm/route.ts` verifies the
+`token_hash` and binds the session cookie to the redirect.
+
+#### When ready for real email — Resend + Supabase (recommended)
+
+Resend has a free tier (~3,000/mo, 100/day), a simple dashboard, and pairs cleanly with this stack.
+(Postmark = great deliverability but paid-first; SES = cheapest at scale but fiddly AWS setup.)
+
+1. **Domain (prerequisite for good deliverability).** Sending from your own address
+   (`noreply@yourdomain`) requires verifying a domain. No domain yet → Resend's test sender
+   `onboarding@resend.dev` works immediately for trying it, but get a domain before real use
+   (unverified/shared senders land in spam).
+2. **Resend account.** Sign up at resend.com → **Domains → Add domain** → paste the DNS records it
+   shows (SPF/DKIM `TXT` + `MX`) into your registrar's DNS; wait for "Verified".
+3. **API key.** Resend → **API Keys → Create** → copy it (shown once).
+4. **Supabase SMTP.** Project Settings → **Authentication → SMTP Settings** → enable custom SMTP:
+   - Host: `smtp.resend.com`  ·  Port: `465` (or `587`)
+   - Username: `resend`  ·  Password: *your Resend API key*
+   - Sender email: an address on your verified domain (e.g. `noreply@yourdomain`)  ·  Sender name: `Kubb Platform`
+5. **Turn on confirmation.** Auth → Providers → Email → enable **Confirm email**.
+6. **URL Configuration.** Site URL = your production origin; Redirect allowlist = prod origin
+   **and** `http://localhost:3000` (covers `/auth/callback` + `/auth/confirm`). Re-check the Apple
+   redirect too (§6.3).
+7. **Confirm-signup email template.** Point the link at the SSR route (token_hash flow, not the
+   implicit-fragment default):
+   ```text
    {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/dashboard
    ```
-5. Test: sign up a fresh email → confirmation arrives → link lands you signed in on
-   `/dashboard`; an unconfirmed account cannot sign in.
-
-The app already handles this: `auth/actions.ts signup` returns a "check your email"
-message when signup yields no session, and `auth/confirm/route.ts` verifies the
-`token_hash` and binds the session cookie to the redirect.
+8. **Test.** Sign up a fresh email → confirmation arrives (check the Resend dashboard's log if not)
+   → link lands you signed in on `/dashboard`; an unconfirmed account can't sign in.
 
 ### 7.3 Deferred
 Private realtime broadcast topic (comes with spectate links), rate limiting, abuse controls.
