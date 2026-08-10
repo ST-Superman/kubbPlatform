@@ -22,6 +22,7 @@ export function HeaderNav({ authed, handle }: { authed: boolean; handle: string 
   const pathname = usePathname();
 
   return (
+    <>
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 pt-[env(safe-area-inset-top)] backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:h-16">
         <Link href="/" className="flex items-center gap-2" onClick={() => setOpen(false)}>
@@ -91,8 +92,10 @@ export function HeaderNav({ authed, handle }: { authed: boolean; handle: string 
           </div>
         )}
       </div>
+    </header>
 
-      {/* Mobile drawer */}
+      {/* Mobile drawer — rendered OUTSIDE <header> so the header's backdrop-blur
+          (which becomes the containing block for position:fixed) can't clip it */}
       <Sheet open={open} onClose={() => setOpen(false)} side="right" title="Menu">
         <div className="flex flex-col gap-1 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
           <div className="flex items-center justify-between pb-2">
@@ -134,6 +137,6 @@ export function HeaderNav({ authed, handle }: { authed: boolean; handle: string 
           </form>
         </div>
       </Sheet>
-    </header>
+    </>
   );
 }
