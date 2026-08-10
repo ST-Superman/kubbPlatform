@@ -89,6 +89,7 @@ type SheetName = "turn" | "lag" | "log" | null;
 export function MatchClient({
   matchId,
   initial,
+  myUserId,
 }: {
   matchId: string;
   initial: MatchState;
@@ -135,6 +136,16 @@ export function MatchClient({
   const status = state.status;
   const active: Side | null = status === "live" && state.current_state ? s.next_side : null;
   const nameOf = (x: Side) => parts[x]?.display_name ?? `Side ${x}`;
+  // A viewer may act for a side that is their own account, or a managed player
+  // (no user_id). A real opponent enters their own lag/turns. Server enforces the
+  // exact rule (can_act); this just gates the UI.
+  const canAct = (side: Side) => {
+    const uid = parts[side]?.user_id;
+    return uid === myUserId || uid == null;
+  };
+  const lagActable = (["A", "B"] as const).some(
+    (sd) => canAct(sd) && (sd === "A" ? state.lag?.a : state.lag?.b) == null,
+  );
   const winnerSide: Side | null =
     status === "finished" ? (gamesWon.A >= state.race_to ? "A" : "B") : null;
 
@@ -234,6 +245,7 @@ export function MatchClient({
           state={state}
           s={s}
           active={active}
+          canAct={canAct("A")}
           confirmSeq={confirmSeq}
           setConfirmSeq={setConfirmSeq}
           pending={pending}
@@ -260,6 +272,7 @@ export function MatchClient({
           state={state}
           s={s}
           active={active}
+          canAct={canAct("B")}
           confirmSeq={confirmSeq}
           setConfirmSeq={setConfirmSeq}
           pending={pending}
@@ -280,14 +293,20 @@ export function MatchClient({
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
           <div className="mx-auto flex max-w-6xl items-center gap-2">
             {status === "created" ? (
-              <button
-                type="button"
-                onClick={() => setSheet("lag")}
-                className="h-12 flex-1 rounded-xl bg-primary text-sm font-semibold tracking-wide text-primary-foreground"
-              >
-                ENTER LAG
-              </button>
-            ) : active ? (
+              lagActable ? (
+                <button
+                  type="button"
+                  onClick={() => setSheet("lag")}
+                  className="h-12 flex-1 rounded-xl bg-primary text-sm font-semibold tracking-wide text-primary-foreground"
+                >
+                  ENTER LAG
+                </button>
+              ) : (
+                <div className="flex h-12 flex-1 items-center justify-center rounded-xl border border-border text-sm text-muted-foreground">
+                  Waiting for opponent&apos;s lag
+                </div>
+              )
+            ) : active && canAct(active) ? (
               <button
                 type="button"
                 onClick={() => setSheet("turn")}
@@ -295,6 +314,10 @@ export function MatchClient({
               >
                 ENTER TURN · {firstName(nameOf(active)).toUpperCase()}
               </button>
+            ) : active ? (
+              <div className="flex h-12 flex-1 items-center justify-center rounded-xl border border-border text-sm text-muted-foreground">
+                Waiting for {firstName(nameOf(active))}
+              </div>
             ) : null}
             <button
               type="button"
@@ -339,16 +362,18 @@ export function MatchClient({
             Lower is better: <code>0.1</code> touching, <code>1</code>–<code>24</code> inches,{" "}
             <code>98</code> not close, <code>99</code> knocked the king.
           </p>
-          {(["A", "B"] as const).map((side) => (
-            <LagRow
-              key={side}
-              side={side}
-              name={nameOf(side)}
-              stored={side === "A" ? state.lag?.a : state.lag?.b}
-              pending={pending}
-              onLag={submitLag}
-            />
-          ))}
+          {(["A", "B"] as const)
+            .filter((side) => canAct(side))
+            .map((side) => (
+              <LagRow
+                key={side}
+                side={side}
+                name={nameOf(side)}
+                stored={side === "A" ? state.lag?.a : state.lag?.b}
+                pending={pending}
+                onLag={submitLag}
+              />
+            ))}
         </div>
       </Sheet>
 
@@ -418,6 +443,7 @@ function Panel({
   state,
   s,
   active,
+  canAct,
   confirmSeq,
   setConfirmSeq,
   pending,
@@ -429,6 +455,7 @@ function Panel({
   state: MatchState;
   s: GameState;
   active: Side | null;
+  canAct: boolean;
   confirmSeq: number | null;
   setConfirmSeq: (n: number | null) => void;
   pending: boolean;
@@ -505,7 +532,7 @@ function Panel({
             <div className="rounded-2xl border border-border/60 bg-background p-4 text-sm font-medium text-[var(--dark-forest)]">
               ✓ Locked{lagVal ? ` (${lagVal})` : ""} — waiting for the other side.
             </div>
-          ) : (
+          ) : canAct ? (
             <div className="flex flex-col gap-2.5 rounded-2xl border border-border/60 bg-background p-4">
               <div className="eyebrow text-muted-foreground">LAG — TOSS AT THE KING</div>
               <select value={lagV} onChange={(e) => setLagV(e.target.value)} className="w-full rounded-xl border border-input bg-card px-3 py-3 text-sm">
@@ -519,16 +546,24 @@ function Panel({
                 ENTER LAG
               </button>
             </div>
+          ) : (
+            <div className="rounded-2xl border border-border/60 bg-background p-4 text-sm text-muted-foreground">
+              Waiting for {firstName(name)} to enter their lag.
+            </div>
           )
         ) : null}
 
-        {active === side ? <TurnFormBody s={s} side={side} pending={pending} onSubmit={onTurn} /> : null}
+        {active === side && canAct ? (
+          <TurnFormBody s={s} side={side} pending={pending} onSubmit={onTurn} />
+        ) : null}
 
-        {status === "live" && active !== side ? (
+        {status === "live" && !(active === side && canAct) ? (
           <div className="flex flex-col gap-2.5 rounded-2xl border border-border/60 bg-background p-4">
             <div className="flex items-center gap-2">
               <span className="size-2 rounded-full bg-[var(--orange-4m)]" />
-              <span className="eyebrow text-muted-foreground">WAITING FOR OPPONENT</span>
+              <span className="eyebrow text-muted-foreground">
+                {active === side ? `WAITING FOR ${firstName(name).toUpperCase()}` : "WAITING FOR OPPONENT"}
+              </span>
             </div>
             {(() => {
               const lastOpp = [...(state.current_turns ?? [])].reverse().find((t) => !t.voided && t.side === opp(side));
@@ -541,7 +576,7 @@ function Panel({
           </div>
         ) : null}
 
-        {myLast && status !== "created" ? (
+        {myLast && canAct && status !== "created" ? (
           <FixPill
             seq={myLast.seq}
             laterCount={(state.current_turns ?? []).filter((t) => !t.voided && t.seq > myLast.seq).length}
