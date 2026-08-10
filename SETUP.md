@@ -141,6 +141,43 @@ Apple, does the final redirect to your app.)
 `/login` → **Continue with Apple** → Apple consent → back to `/dashboard`, signed in.
 The `handle_new_user` trigger creates the profile just like an email signup.
 
+## 7. Production hardening (Phase 3)
+
+Before sharing widely. Code is already in place; these are Supabase dashboard steps.
+
+### 7.1 RLS — match data scoped to participants
+Migration `supabase/migrations/*_tighten_match_rls.sql` replaces the open
+`SELECT using (true)` policies on `matches`/`games`/`turns`/`match_participants`/
+`match_lineups` with creator/participant scope (via SECURITY DEFINER `can_view_match`
+helpers). The app is unaffected — it reads match data only through SECURITY DEFINER
+RPCs — but the auto REST API no longer leaks other people's matches. Apply with
+`supabase db push`. (`profiles`/`players`/`teams` stay public: profiles + rosters are
+meant to be readable.)
+
+### 7.2 Turn on email confirmation + real SMTP
+The spike had confirmation OFF. To require verified emails:
+1. **Auth → Providers → Email:** enable **Confirm email**.
+2. **Auth → SMTP:** configure a real provider (Resend, Postmark, SES…) — sender
+   address + host/port/user/pass. The built-in mailer is rate-limited and unreliable;
+   don't ship on it.
+3. **Auth → URL Configuration:** Site URL = your production origin; add to the Redirect
+   allowlist your prod origin **and** `http://localhost:3000` (these cover
+   `/auth/callback` and `/auth/confirm`). Re-check the Apple provider redirect too (§6.3).
+4. **Auth → Email Templates → Confirm signup:** point the link at the SSR confirm route
+   so it uses the token_hash flow (not the implicit-fragment default):
+   ```
+   {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/dashboard
+   ```
+5. Test: sign up a fresh email → confirmation arrives → link lands you signed in on
+   `/dashboard`; an unconfirmed account cannot sign in.
+
+The app already handles this: `auth/actions.ts signup` returns a "check your email"
+message when signup yields no session, and `auth/confirm/route.ts` verifies the
+`token_hash` and binds the session cookie to the redirect.
+
+### 7.3 Deferred
+Private realtime broadcast topic (comes with spectate links), rate limiting, abuse controls.
+
 ## Project map
 
 ```
