@@ -1,27 +1,43 @@
 import { type EmailOtpType } from "@supabase/supabase-js";
-import { type NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 
-import { createClient } from "@/lib/supabase/server";
+import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 
 /**
- * Handles the email confirmation / magic-link callback.
- * Supabase sends the user here with `token_hash` + `type`; we verify the
- * OTP (which sets the session cookie) and forward to `next`.
+ * Email confirmation / magic-link callback. Supabase sends `token_hash` + `type`;
+ * we verify the OTP (which sets the session) and forward to `next`.
+ *
+ * Cookie writes are bound to the redirect `response` (same reason as the OAuth
+ * callback) so the session survives the redirect on the first attempt.
  */
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
+  const { searchParams, origin } = new URL(request.url);
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
-  const next = searchParams.get("next") ?? "/dashboard";
-  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+  const nextParam = searchParams.get("next") ?? "/dashboard";
+  const next =
+    nextParam.startsWith("/") && !nextParam.startsWith("//")
+      ? nextParam
+      : "/dashboard";
 
-  if (token_hash && type) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.verifyOtp({ type, token_hash });
-    if (!error) {
-      return NextResponse.redirect(new URL(safeNext, request.url));
-    }
-  }
+  if (!token_hash || !type) return NextResponse.redirect(`${origin}/error`);
 
-  return NextResponse.redirect(new URL("/error", request.url));
+  const response = NextResponse.redirect(`${origin}${next}`);
+  const supabase = createServerClient(getSupabaseUrl(), getSupabaseAnonKey(), {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, options),
+        );
+      },
+    },
+  });
+
+  const { error } = await supabase.auth.verifyOtp({ type, token_hash });
+  if (error) return NextResponse.redirect(`${origin}/error`);
+  return response;
 }
