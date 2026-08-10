@@ -23,6 +23,7 @@ import {
 } from "@/lib/kubb-rules";
 import { Sheet } from "@/components/ui/sheet";
 import { MatchInvite } from "@/components/match-invite";
+import { MatchActions } from "@/components/match-actions";
 import { cn } from "@/lib/utils";
 
 const SIDE_COLOR: Record<Side, string> = {
@@ -213,14 +214,18 @@ export function MatchClient({
         <div className="flex flex-col gap-3 rounded-2xl border border-[var(--swedish-gold)]/50 bg-[var(--swedish-gold)]/12 px-5 py-4">
           <div className="flex items-end justify-between gap-3">
             <div>
-              <div className="eyebrow text-[var(--gold-ink)]">🏆 MATCH OVER</div>
-              <div className="display mt-0.5 text-2xl">{nameOf(winnerSide ?? "A")} wins</div>
+              <div className="eyebrow text-[var(--gold-ink)]">
+                🏆 MATCH OVER{state.by_forfeit ? " · BY FORFEIT" : ""}
+              </div>
+              <div className="display mt-0.5 text-2xl">
+                {nameOf(state.winner_side ?? winnerSide ?? "A")} wins
+              </div>
             </div>
             <div className="display text-4xl tabular-nums">
               {gamesWon.A}–{gamesWon.B}
             </div>
           </div>
-          {games.length > 0 ? (
+          {!state.by_forfeit && games.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
               {games.map((g) => (
                 <span
@@ -239,7 +244,19 @@ export function MatchClient({
         </div>
       ) : null}
 
-      <MatchInvite matchId={matchId} participants={parts} myUserId={myUserId} />
+      {status === "abandoned" ? (
+        <div className="rounded-2xl border border-border bg-muted/40 px-5 py-4">
+          <div className="eyebrow text-muted-foreground">MATCH ABANDONED</div>
+          <div className="mt-0.5 text-sm text-muted-foreground">
+            This match was stopped — no result recorded.
+          </div>
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <MatchInvite matchId={matchId} participants={parts} myUserId={myUserId} />
+        <MatchActions matchId={matchId} state={state} myUserId={myUserId} onState={setState} />
+      </div>
 
       {/* ===== Desktop: three columns ===== */}
       <div className="hidden gap-6 lg:flex lg:items-start">

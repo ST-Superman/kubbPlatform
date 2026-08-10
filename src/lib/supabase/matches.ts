@@ -59,6 +59,8 @@ export type MatchState = {
   last_game_id: string | null;
   next_seq: number | null;
   undo_target: { game_id: string; seq: number } | null;
+  winner_side: Side | null;
+  by_forfeit: boolean;
 };
 
 export type MatchSummary = {
