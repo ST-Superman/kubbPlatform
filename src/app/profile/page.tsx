@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 import { getMyProfile } from "@/lib/supabase/profiles";
 import { ProfileForm } from "@/components/profile-form";
@@ -63,6 +64,13 @@ export default async function ProfilePage() {
           <ProfileForm profile={profile} />
         </CardContent>
       </Card>
+
+      <Link
+        href="/reset-password"
+        className="self-start text-sm font-medium text-primary underline-offset-4 hover:underline"
+      >
+        Change password →
+      </Link>
     </div>
   );
 }

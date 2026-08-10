@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import {
   type GameState,
+  type GameSummary,
   type MatchState,
+  type MatchStatus,
   type Side,
   type TurnRow,
 } from "@/lib/supabase/matches";
+import { ctaClass } from "@/components/brand";
 import {
   ADV_LINE_OPTIONS,
   LAG_OPTIONS,
@@ -102,11 +105,30 @@ export function MatchClient({
   const [confirmSeq, setConfirmSeq] = useState<number | null>(null);
   const [sheet, setSheet] = useState<SheetName>(null);
 
+  // Game-won interstitial: fire once each time another game gains a winner.
+  // Detected as new state arrives (realtime refetch or an RPC result) rather than
+  // in an effect, so we never setState synchronously inside an effect body. The
+  // ref seeds to the decided-count already present, so opening an in-progress or
+  // finished match never pops the overlay — only live game boundaries do.
+  const [gameJustEnded, setGameJustEnded] = useState<{ number: number; winner: Side } | null>(null);
+  const prevDecidedRef = useRef<number>(
+    (initial.games ?? []).filter((g) => g.winner).length,
+  );
+  const commitState = useCallback((next: MatchState) => {
+    const decided = (next.games ?? []).filter((g) => g.winner);
+    if (decided.length > prevDecidedRef.current) {
+      const last = decided[decided.length - 1];
+      if (last?.winner) setGameJustEnded({ number: last.game_number, winner: last.winner });
+    }
+    prevDecidedRef.current = decided.length;
+    setState(next);
+  }, []);
+
   useEffect(() => {
     const supabase = createClient();
     const refetch = async () => {
       const { data } = await supabase.rpc("match_state", { p_match_id: matchId });
-      if (data) setState(data as MatchState);
+      if (data) commitState(data as MatchState);
     };
     const channel = supabase
       .channel(`match:${matchId}`)
@@ -115,7 +137,7 @@ export function MatchClient({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [matchId]);
+  }, [matchId, commitState]);
 
   function rpc(fn: string, args: Record<string, unknown>, onOk?: () => void) {
     start(async () => {
@@ -125,7 +147,7 @@ export function MatchClient({
         toast.error(errText(error.message));
         return;
       }
-      if (data) setState(data as MatchState);
+      if (data) commitState(data as MatchState);
       onOk?.();
     });
   }
@@ -148,8 +170,11 @@ export function MatchClient({
   const lagActable = (["A", "B"] as const).some(
     (sd) => canAct(sd) && (sd === "A" ? state.lag?.a : state.lag?.b) == null,
   );
-  const winnerSide: Side | null =
-    status === "finished" ? (gamesWon.A >= state.race_to ? "A" : "B") : null;
+
+  // The side that belongs to the signed-in account (null when scoring a match
+  // between two managed players — then any game win is celebrated).
+  const mySide: Side | null =
+    (["A", "B"] as const).find((sd) => parts[sd]?.user_id === myUserId) ?? null;
 
   const submitLag = (side: Side, value: string) => {
     if (value) rpc("submit_lag", { p_match_id: matchId, p_side: side, p_value: value });
@@ -218,7 +243,7 @@ export function MatchClient({
                 🏆 MATCH OVER{state.by_forfeit ? " · BY FORFEIT" : ""}
               </div>
               <div className="display mt-0.5 text-2xl">
-                {nameOf(state.winner_side ?? winnerSide ?? "A")} wins
+                {nameOf(state.winner_side ?? "A")} wins
               </div>
             </div>
             <div className="display text-4xl tabular-nums">
@@ -410,6 +435,138 @@ export function MatchClient({
           />
         </div>
       </Sheet>
+
+      {gameJustEnded ? (
+        <GameWonOverlay
+          info={gameJustEnded}
+          mySide={mySide}
+          gamesWon={gamesWon}
+          raceTo={state.race_to}
+          status={status}
+          nameOf={nameOf}
+          games={games}
+          onDismiss={() => setGameJustEnded(null)}
+          onViewLog={() => {
+            setGameJustEnded(null);
+            setSheet("log");
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/* ---------- game-won interstitial ---------- */
+
+function GameWonOverlay({
+  info,
+  mySide,
+  gamesWon,
+  raceTo,
+  status,
+  nameOf,
+  games,
+  onDismiss,
+  onViewLog,
+}: {
+  info: { number: number; winner: Side };
+  mySide: Side | null;
+  gamesWon: Record<Side, number>;
+  raceTo: number;
+  status: MatchStatus;
+  nameOf: (x: Side) => string;
+  games: GameSummary[];
+  onDismiss: () => void;
+  onViewLog: () => void;
+}) {
+  useEffect(() => {
+    if (typeof navigator !== "undefined") navigator.vibrate?.([30, 40, 30]);
+  }, []);
+
+  const iWon = mySide ? info.winner === mySide : true;
+  const side = mySide ?? info.winner;
+  const myW = gamesWon[side];
+  const oppW = gamesWon[opp(side)];
+  const matchOver = status === "finished";
+  const myFirst = firstName(nameOf(side));
+  const winnerName = firstName(nameOf(info.winner));
+
+  let context: string;
+  if (iWon) {
+    if (myW >= raceTo) context = `That's the match — you take it ${myW}–${oppW}.`;
+    else if (myW > oppW) {
+      const need = raceTo - myW;
+      context =
+        need === 1
+          ? `You lead ${myW}–${oppW} — one more and the match is yours.`
+          : `You lead ${myW}–${oppW} — ${need} more to take it.`;
+    } else if (myW === oppW) context = `All square at ${myW}–${oppW}.`;
+    else context = `Back in it — ${myW}–${oppW}.`;
+  } else {
+    context = matchOver
+      ? `${winnerName} takes the match ${oppW}–${myW}. Next time.`
+      : `Shake it off — game ${info.number + 1} decides it.`;
+  }
+
+  const decided = games.filter((g): g is GameSummary & { winner: Side } => !!g.winner);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0D1726]/55 p-6 backdrop-blur-[2px] animate-in fade-in duration-200"
+    >
+      <div
+        className={cn(
+          "flex w-full max-w-[330px] flex-col items-center gap-0 rounded-[20px] border-[1.5px] px-[22px] py-[26px] text-center shadow-[0_8px_40px_rgba(13,23,38,.35)] animate-in fade-in zoom-in-95 duration-300 motion-reduce:animate-none",
+          iWon
+            ? "border-[var(--swedish-gold)]/70 bg-card"
+            : "border-border bg-foreground/[0.04]",
+        )}
+      >
+        {iWon ? <div className="text-[38px] leading-none">🏆</div> : null}
+        <div
+          className={cn(
+            "eyebrow tracking-[1.6px]",
+            iWon ? "mt-3.5 text-[var(--gold-ink)]" : "text-muted-foreground",
+          )}
+        >
+          {iWon
+            ? `GAME ${info.number} · YOU TAKE IT`
+            : `GAME ${info.number} · ${winnerName.toUpperCase()} TAKES IT`}
+        </div>
+        <div className="display mt-2 text-[32px] italic tracking-[-1.2px]">
+          {iWon ? `Game won, ${myFirst}!` : `Game to ${winnerName}.`}
+        </div>
+        <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">{context}</p>
+
+        {decided.length > 0 ? (
+          <div className="mt-4 flex flex-wrap justify-center gap-1.5">
+            {decided.map((g) => (
+              <span
+                key={g.game_number}
+                className="rounded-full border px-2.5 py-1 font-mono text-[9px] font-bold tracking-wider"
+                style={{ color: SIDE_COLOR[g.winner], borderColor: "currentColor" }}
+              >
+                G{g.game_number} · {firstName(nameOf(g.winner)).toUpperCase()}
+              </span>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="mt-5 flex w-full flex-col gap-2">
+          <button type="button" onClick={onDismiss} className={ctaClass("primary")}>
+            {matchOver ? "SEE THE RESULT" : `START GAME ${info.number + 1}`}
+          </button>
+          <button
+            type="button"
+            onClick={onViewLog}
+            className="h-10 text-[13px] font-semibold text-muted-foreground"
+          >
+            View the turn log
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

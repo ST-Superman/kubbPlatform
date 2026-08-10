@@ -11,6 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { Sheet } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
+
+const RACE_OPTIONS = [1, 2, 3, 5, 7];
 
 const CREATE_ERRORS: Record<string, string> = {
   auth_required: "You must be signed in.",
@@ -37,6 +41,7 @@ export function MatchesClient({
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Opponent | null>(null);
   const [open, setOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [raceTo, setRaceTo] = useState(2);
   const [pending, start] = useTransition();
 
@@ -54,6 +59,7 @@ export function MatchesClient({
     setSelected(o);
     setQuery("");
     setOpen(false);
+    setSheetOpen(false);
   }
 
   function goToMatch(data: unknown) {
@@ -77,11 +83,13 @@ export function MatchesClient({
     });
   }
 
-  // Type a new name → create a managed placeholder + a match against them, then land
+  // Type a new name -> create a managed placeholder + a match against them, then land
   // in the match (where an invite link is offered). No /players detour.
   function createAndInvite(name: string) {
     const n = name.trim();
     if (!n) return;
+    setOpen(false);
+    setSheetOpen(false);
     start(async () => {
       const supabase = createClient();
       const { data: pd, error: pErr } = await supabase.rpc("create_managed_player", {
@@ -104,6 +112,41 @@ export function MatchesClient({
     });
   }
 
+  // Shared result rows for the desktop popover and the mobile sheet.
+  const results = (
+    <>
+      {filtered.map((o) => (
+        <li key={o.player_id}>
+          <button
+            type="button"
+            onClick={() => choose(o)}
+            className="flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm hover:bg-muted"
+          >
+            <span className="font-medium">{o.display_name}</span>
+            <span className="font-mono text-xs text-muted-foreground">
+              {o.handle ? `@${o.handle}` : o.kind}
+            </span>
+          </button>
+        </li>
+      ))}
+      {query.trim() ? (
+        <li>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => createAndInvite(query)}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm hover:bg-muted disabled:opacity-50"
+          >
+            <span className="text-muted-foreground">＋</span>
+            <span>
+              Create &amp; invite “<span className="font-medium">{query.trim()}</span>”
+            </span>
+          </button>
+        </li>
+      ) : null}
+    </>
+  );
+
   const inProgress = initial.filter((m) => m.status === "created" || m.status === "live");
   const completed = initial.filter((m) => m.status === "finished" || m.status === "abandoned");
 
@@ -113,9 +156,24 @@ export function MatchesClient({
         <CardContent className="flex flex-col gap-4">
           <span className="eyebrow text-muted-foreground">New match</span>
 
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="opponent">Opponent</Label>
-            <div className="relative">
+
+            {/* Mobile: tap to open a bottom sheet */}
+            <button
+              type="button"
+              onClick={() => setSheetOpen(true)}
+              className="flex h-12 w-full items-center rounded-[12px] border border-input bg-card px-3.5 text-left text-base sm:hidden"
+            >
+              {selected ? (
+                <span>{selected.display_name}</span>
+              ) : (
+                <span className="text-muted-foreground">Search players or type a new name…</span>
+              )}
+            </button>
+
+            {/* Desktop: inline input + absolute popover */}
+            <div className="relative hidden sm:block">
               <Input
                 id="opponent"
                 autoComplete="off"
@@ -130,38 +188,11 @@ export function MatchesClient({
               />
               {open && (filtered.length > 0 || query.trim()) ? (
                 <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-border bg-card p-1 shadow-lg ring-1 ring-foreground/10">
-                  {filtered.map((o) => (
-                    <li key={o.player_id}>
-                      <button
-                        type="button"
-                        onClick={() => choose(o)}
-                        className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-muted"
-                      >
-                        <span className="font-medium">{o.display_name}</span>
-                        <span className="font-mono text-xs text-muted-foreground">
-                          {o.handle ? `@${o.handle}` : o.kind}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                  {query.trim() ? (
-                    <li>
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() => createAndInvite(query)}
-                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-muted disabled:opacity-50"
-                      >
-                        <span className="text-muted-foreground">＋</span>
-                        <span>
-                          Create &amp; invite “<span className="font-medium">{query.trim()}</span>”
-                        </span>
-                      </button>
-                    </li>
-                  ) : null}
+                  {results}
                 </ul>
               ) : null}
             </div>
+
             {selected ? (
               <p className="text-xs text-muted-foreground">
                 Playing <span className="font-medium">{selected.display_name}</span>
@@ -181,17 +212,26 @@ export function MatchesClient({
             )}
           </div>
 
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="raceto">Race to</Label>
-            <Input
-              id="raceto"
-              type="number"
-              min={1}
-              max={9}
-              value={raceTo}
-              onChange={(e) => setRaceTo(Number(e.target.value))}
-              className="w-24"
-            />
+            <div id="raceto" className="flex gap-2">
+              {RACE_OPTIONS.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setRaceTo(n)}
+                  aria-pressed={raceTo === n}
+                  className={cn(
+                    "h-11 flex-1 rounded-xl border font-mono text-sm font-bold tabular-nums transition-colors",
+                    raceTo === n
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
           </div>
 
           <Button onClick={create} disabled={pending || !selected} className="w-full sm:w-fit">
@@ -199,6 +239,22 @@ export function MatchesClient({
           </Button>
         </CardContent>
       </Card>
+
+      {/* Mobile opponent sheet */}
+      <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="Pick opponent">
+        <div className="flex flex-col gap-2 px-4 pt-1 pb-2">
+          <span className="eyebrow text-muted-foreground">OPPONENT</span>
+          <Input
+            autoComplete="off"
+            autoFocus
+            value={query}
+            placeholder="Search players or type a new name…"
+            onChange={(e) => setQuery(e.target.value)}
+            className="h-12 rounded-[12px] bg-card px-3.5 text-base md:text-base"
+          />
+          <ul className="mt-1 flex max-h-[52vh] flex-col overflow-auto">{results}</ul>
+        </div>
+      </Sheet>
 
       {initial.length === 0 ? (
         <p className="text-sm text-muted-foreground">No matches yet.</p>

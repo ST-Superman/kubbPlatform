@@ -8,6 +8,7 @@ import { signout } from "@/app/auth/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Sheet } from "@/components/ui/sheet";
+import { LogoMark } from "@/components/brand";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
@@ -25,13 +26,8 @@ export function HeaderNav({ authed, handle }: { authed: boolean; handle: string 
     <>
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 pt-[env(safe-area-inset-top)] backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:h-16">
-        <Link href="/" className="flex items-center gap-2" onClick={() => setOpen(false)}>
-          <span
-            aria-hidden
-            className="grid size-8 place-items-center rounded-full bg-primary text-primary-foreground"
-          >
-            ♚
-          </span>
+        <Link href="/" className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
+          <LogoMark size={30} />
           <span className="eyebrow text-foreground">KUBB PLATFORM</span>
         </Link>
 
@@ -78,17 +74,17 @@ export function HeaderNav({ authed, handle }: { authed: boolean; handle: string 
             </div>
           </>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <ThemeToggle />
-            <Link
-              href="/login"
-              className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
-            >
-              Sign in
-            </Link>
-            <Link href="/signup" className={cn(buttonVariants({ size: "sm" }))}>
-              Sign up
-            </Link>
+            {pathname === "/login" ? (
+              <Link href="/signup" className="font-mono text-[10px] font-bold tracking-[1.2px] text-primary">
+                SIGN UP
+              </Link>
+            ) : (
+              <Link href="/login" className="font-mono text-[10px] font-bold tracking-[1.2px] text-primary">
+                SIGN IN
+              </Link>
+            )}
           </div>
         )}
       </div>
