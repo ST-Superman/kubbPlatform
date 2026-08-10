@@ -27,3 +27,20 @@ export async function getMyManagedPlayers(): Promise<ManagedPlayer[]> {
 
   return data as ManagedPlayer[];
 }
+
+export type ActivePlayer = {
+  player_id: string;
+  handle: string;
+  display_name: string;
+  avatar_url: string | null;
+  wins: number;
+  losses: number;
+};
+
+/** Every account-backed player + their match W-L record, for the Current Players tab. */
+export async function getActivePlayers(): Promise<ActivePlayer[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_active_players");
+  if (error || !data) return [];
+  return data as ActivePlayer[];
+}
