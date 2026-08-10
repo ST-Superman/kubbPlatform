@@ -23,11 +23,15 @@ function friendlyClaimError(message: string | undefined): string {
 }
 
 /**
- * Binds the managed player behind `token` to the signed-in account. On success
- * the token is consumed (single-use), so we redirect to a standalone success
- * page rather than re-rendering the now-dead claim landing.
+ * Binds the managed player behind `token` to the signed-in account. On success the
+ * token is consumed (single-use), so we redirect away from the now-dead claim landing:
+ * to `next` when provided (e.g. back into the match the invite came from), else the
+ * standalone success page.
  */
-export async function claimPlayer(token: string): Promise<{ error?: string }> {
+export async function claimPlayer(
+  token: string,
+  next?: string,
+): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("claim_player", {
     p_claim_token: token,
@@ -37,6 +41,8 @@ export async function claimPlayer(token: string): Promise<{ error?: string }> {
     return { error: friendlyClaimError(error.message) };
   }
 
+  const safeNext =
+    next && next.startsWith("/") && !next.startsWith("//") ? next : null;
   const name = (data as { display_name?: string } | null)?.display_name ?? "";
-  redirect(`/claim/done?name=${encodeURIComponent(name)}`);
+  redirect(safeNext ?? `/claim/done?name=${encodeURIComponent(name)}`);
 }

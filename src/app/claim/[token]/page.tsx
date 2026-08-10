@@ -29,10 +29,20 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 export default async function ClaimPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ next?: string }>;
 }) {
   const { token } = await params;
+  const { next: nextRaw } = await searchParams;
+  // Same-origin only; where to land the invitee after they claim (e.g. the match).
+  const next =
+    nextRaw && nextRaw.startsWith("/") && !nextRaw.startsWith("//")
+      ? nextRaw
+      : undefined;
+  // Preserve `next` across sign-up/sign-in so they return to this claim page, then on.
+  const claimPath = `/claim/${token}${next ? `?next=${encodeURIComponent(next)}` : ""}`;
 
   const supabase = await createClient();
   const {
@@ -147,11 +157,11 @@ export default async function ClaimPage({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {user ? (
-            <ClaimConfirm token={token} displayName={name} />
+            <ClaimConfirm token={token} displayName={name} next={next} />
           ) : (
             <div className="flex flex-col gap-3">
               <Suspense>
-                <OAuthButtons redirectTo={`/claim/${token}`} />
+                <OAuthButtons redirectTo={claimPath} />
               </Suspense>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="h-px flex-1 bg-border" />
@@ -159,13 +169,13 @@ export default async function ClaimPage({
                 <span className="h-px flex-1 bg-border" />
               </div>
               <Link
-                href={`/signup?redirectTo=/claim/${token}`}
+                href={`/signup?redirectTo=${encodeURIComponent(claimPath)}`}
                 className={cn(buttonVariants({ variant: "outline" }), "w-full")}
               >
                 Claim as {firstName} with email
               </Link>
               <Link
-                href={`/login?redirectTo=/claim/${token}`}
+                href={`/login?redirectTo=${encodeURIComponent(claimPath)}`}
                 className={cn(buttonVariants({ variant: "ghost" }), "w-full")}
               >
                 I already have an account

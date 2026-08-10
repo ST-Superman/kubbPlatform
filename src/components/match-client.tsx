@@ -22,6 +22,7 @@ import {
   type TurnDraft,
 } from "@/lib/kubb-rules";
 import { Sheet } from "@/components/ui/sheet";
+import { MatchInvite } from "@/components/match-invite";
 import { cn } from "@/lib/utils";
 
 const SIDE_COLOR: Record<Side, string> = {
@@ -237,6 +238,8 @@ export function MatchClient({
           ) : null}
         </div>
       ) : null}
+
+      <MatchInvite matchId={matchId} participants={parts} myUserId={myUserId} />
 
       {/* ===== Desktop: three columns ===== */}
       <div className="hidden gap-6 lg:flex lg:items-start">
@@ -841,22 +844,24 @@ function FixPill({
   );
 }
 
-function TurnLog({
+export function TurnLog({
   turns,
   games,
   nameOf,
-  confirmSeq,
+  confirmSeq = null,
   setConfirmSeq,
   pending,
   onRewind,
+  readOnly = false,
 }: {
   turns: TurnRow[];
   games: { game_number: number; winner: Side | null }[];
   nameOf: (x: Side) => string;
-  confirmSeq: number | null;
-  setConfirmSeq: (n: number | null) => void;
-  pending: boolean;
-  onRewind: (seq: number) => void;
+  confirmSeq?: number | null;
+  setConfirmSeq?: (n: number | null) => void;
+  pending?: boolean;
+  onRewind?: (seq: number) => void;
+  readOnly?: boolean;
 }) {
   const lastGameNo = games.length;
   const priorGames = games.filter((g) => g.game_number < lastGameNo && g.winner);
@@ -882,8 +887,8 @@ function TurnLog({
                 </div>
                 <div className={cn("text-xs leading-snug text-muted-foreground", t.voided && "line-through")}>{turnText(t)}</div>
               </div>
-              {!t.voided && confirmSeq == null ? (
-                <button type="button" title="Rewind to before this turn" onClick={() => setConfirmSeq(t.seq)} className="grid size-8 shrink-0 place-items-center rounded-lg border border-border bg-card text-xs">
+              {!readOnly && !t.voided && confirmSeq == null ? (
+                <button type="button" title="Rewind to before this turn" onClick={() => setConfirmSeq?.(t.seq)} className="grid size-8 shrink-0 place-items-center rounded-lg border border-border bg-card text-xs">
                   ↺
                 </button>
               ) : null}
@@ -894,10 +899,10 @@ function TurnLog({
                   Rewind to before turn #{t.seq}?
                   {later > 0 ? ` This also voids the ${later} turn(s) after it.` : ""}
                 </div>
-                <button type="button" disabled={pending} onClick={() => onRewind(t.seq)} className="rounded-full bg-destructive px-3 py-1.5 font-mono text-[9px] font-bold tracking-wider text-white">
+                <button type="button" disabled={pending} onClick={() => onRewind?.(t.seq)} className="rounded-full bg-destructive px-3 py-1.5 font-mono text-[9px] font-bold tracking-wider text-white">
                   REWIND
                 </button>
-                <button type="button" onClick={() => setConfirmSeq(null)} className="rounded-full border border-border px-3 py-1.5 font-mono text-[9px] font-bold tracking-wider text-muted-foreground">
+                <button type="button" onClick={() => setConfirmSeq?.(null)} className="rounded-full border border-border px-3 py-1.5 font-mono text-[9px] font-bold tracking-wider text-muted-foreground">
                   KEEP
                 </button>
               </div>
@@ -922,7 +927,7 @@ function TurnLog({
 
 /* ---------- pitch ---------- */
 
-function PitchCard({ s, nameOf, done }: { s: GameState; nameOf: (x: Side) => string; done: boolean }) {
+export function PitchCard({ s, nameOf, done }: { s: GameState; nameOf: (x: Side) => string; done: boolean }) {
   return (
     <div className="flex flex-col gap-2 rounded-[18px] border border-foreground/10 bg-muted/40 p-4 shadow-sm">
       <span className="eyebrow text-muted-foreground">THE PITCH · SPECTATOR VIEW</span>

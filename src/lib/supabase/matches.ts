@@ -140,3 +140,15 @@ export async function getPlayerProfile(handle: string): Promise<PlayerProfile | 
   if (error || !data) return null;
   return data as PlayerProfile;
 }
+
+/** Read-only match state for a spectate/play token — used by the public /watch page. */
+export async function getMatchStateByToken(token: string): Promise<MatchState | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("match_state_by_token", {
+    p_token: token,
+  });
+  if (error || !data) return null;
+  const d = data as MatchState & { error?: string };
+  if (d.error) return null;
+  return d;
+}

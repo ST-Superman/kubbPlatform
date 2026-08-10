@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button";
 export function ClaimConfirm({
   token,
   displayName,
+  next,
 }: {
   token: string;
   displayName: string;
+  next?: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string>("");
@@ -21,7 +23,7 @@ export function ClaimConfirm({
     setError("");
     startTransition(async () => {
       // Resolves only on error; success redirects server-side.
-      const res = await claimPlayer(token);
+      const res = await claimPlayer(token, next);
       if (res?.error) setError(res.error);
     });
   }
