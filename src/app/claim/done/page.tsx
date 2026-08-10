@@ -20,7 +20,7 @@ export default async function ClaimDonePage({
   const firstName = displayName.split(/\s+/)[0] || "you";
 
   return (
-    <div className="mx-auto flex max-w-md flex-col px-4 py-16">
+    <div className="mx-auto flex max-w-md flex-col px-4 py-12 sm:py-16">
       <Card>
         <CardHeader>
           <span

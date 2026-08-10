@@ -75,7 +75,7 @@ export function ManagedPlayers({
               </p>
             ) : null}
 
-            <Button type="submit" disabled={pending} className="w-fit">
+            <Button type="submit" disabled={pending} className="w-full sm:w-fit">
               {pending ? "Adding…" : "Add to roster"}
             </Button>
           </form>

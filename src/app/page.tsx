@@ -11,31 +11,31 @@ export default async function Home() {
   } = await supabase.auth.getUser();
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col items-center px-4 py-24 text-center">
+    <div className="mx-auto flex max-w-3xl flex-col items-center px-4 py-16 text-center sm:py-24">
       <span className="eyebrow text-muted-foreground">
         COMPETITIVE KUBB, ONLINE
       </span>
-      <h1 className="display mt-4 text-5xl font-medium text-foreground sm:text-6xl">
+      <h1 className="display mt-4 text-4xl font-medium text-foreground sm:text-6xl">
         Where kubb lives online
       </h1>
-      <p className="mt-6 max-w-xl text-lg text-muted-foreground">
+      <p className="mt-6 max-w-xl text-base text-muted-foreground sm:text-lg">
         Friendly matches, leagues, tournaments, and profiles — for anyone, on any
         device. This is the Phase&nbsp;0 foundation of the platform.
       </p>
 
-      <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+      <div className="mt-10 flex w-full flex-col items-stretch justify-center gap-3 sm:w-auto sm:flex-row sm:items-center">
         {user ? (
-          <Link href="/dashboard" className={cn(buttonVariants({ size: "lg" }))}>
+          <Link href="/dashboard" className={cn(buttonVariants({ size: "lg" }), "w-full sm:w-auto")}>
             Go to your dashboard
           </Link>
         ) : (
           <>
-            <Link href="/signup" className={cn(buttonVariants({ size: "lg" }))}>
+            <Link href="/signup" className={cn(buttonVariants({ size: "lg" }), "w-full sm:w-auto")}>
               Create an account
             </Link>
             <Link
               href="/login"
-              className={cn(buttonVariants({ size: "lg", variant: "outline" }))}
+              className={cn(buttonVariants({ size: "lg", variant: "outline" }), "w-full sm:w-auto")}
             >
               Sign in
             </Link>

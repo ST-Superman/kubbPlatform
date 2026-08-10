@@ -23,7 +23,7 @@ type Preview = {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto flex max-w-md flex-col px-4 py-16">{children}</div>
+    <div className="mx-auto flex max-w-md flex-col px-4 py-12 sm:py-16">{children}</div>
   );
 }
 

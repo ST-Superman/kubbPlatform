@@ -155,7 +155,7 @@ export function MatchesClient({
                 />
               </div>
 
-              <Button onClick={create} disabled={pending || !selected} className="w-fit">
+              <Button onClick={create} disabled={pending || !selected} className="w-full sm:w-fit">
                 {pending ? "Creating…" : "Create match"}
               </Button>
             </>

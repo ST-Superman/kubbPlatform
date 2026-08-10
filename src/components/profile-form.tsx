@@ -72,7 +72,7 @@ export function ProfileForm({ profile }: { profile: Profile }) {
         </p>
       ) : null}
 
-      <Button type="submit" disabled={pending} className="mt-1 w-fit">
+      <Button type="submit" disabled={pending} className="mt-1 w-full sm:w-fit">
         {pending ? "Saving…" : "Save changes"}
       </Button>
     </form>

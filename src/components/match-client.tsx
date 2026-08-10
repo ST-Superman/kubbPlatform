@@ -21,6 +21,7 @@ import {
   turnText,
   type TurnDraft,
 } from "@/lib/kubb-rules";
+import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 const SIDE_COLOR: Record<Side, string> = {
@@ -49,7 +50,6 @@ const TURN_ERRORS: Record<string, string> = {
   already_scored: "Someone already scored this turn — it will refresh.",
   forbidden: "It's not your turn to score.",
   not_in_lag: "Lag is already done for this match.",
-  tie: "Dead even — both sides lag again.",
 };
 const errText = (m: string | undefined) => {
   const code = m?.match(/[a-z_]+/)?.[0];
@@ -67,10 +67,11 @@ const NEUTRAL: GameState = {
   round_cap: 2,
 };
 
+type SheetName = "turn" | "lag" | "log" | null;
+
 export function MatchClient({
   matchId,
   initial,
-  myUserId,
 }: {
   matchId: string;
   initial: MatchState;
@@ -79,6 +80,7 @@ export function MatchClient({
   const [state, setState] = useState<MatchState>(initial);
   const [pending, start] = useTransition();
   const [confirmSeq, setConfirmSeq] = useState<number | null>(null);
+  const [sheet, setSheet] = useState<SheetName>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -103,11 +105,7 @@ export function MatchClient({
         toast.error(errText(error.message));
         return;
       }
-      if (data) {
-        const next = data as MatchState & { status?: string };
-        if (next?.status) setState(next);
-        else void supabase.rpc("match_state", { p_match_id: matchId }).then(({ data: d }) => d && setState(d as MatchState));
-      }
+      if (data) setState(data as MatchState);
       onOk?.();
     });
   }
@@ -120,50 +118,53 @@ export function MatchClient({
   const status = state.status;
   const active: Side | null = status === "live" && state.current_state ? s.next_side : null;
   const nameOf = (x: Side) => parts[x]?.display_name ?? `Side ${x}`;
-
-  function submitLag(side: Side, value: string) {
-    if (!value) return;
-    rpc("submit_lag", { p_match_id: matchId, p_side: side, p_value: value });
-  }
-  function submitTurn(d: TurnDraft) {
-    rpc("submit_turn", {
-      p_turn_id: crypto.randomUUID(),
-      p_game_id: state.current_game_id,
-      p_token: null,
-      p_expected_seq: state.next_seq,
-      p_batons_field: d.batons_field,
-      p_batons_baseline: d.batons_baseline,
-      p_baseline_kubbs: d.baseline_kubbs,
-      p_base_kubb_double: d.base_kubb_double,
-      p_penalty_kubbs: d.penalty_kubbs,
-      p_field_kubbs_left: d.field_kubbs_left,
-      p_advantage_line: d.field_kubbs_left > 0 ? d.advantage_line : null,
-      p_king_shots: d.king_shots,
-      p_king_hit: d.king_hit,
-      p_king_hit_early: d.king_hit_early,
-    });
-  }
-  function rewind(seq: number) {
-    if (!state.last_game_id) return;
-    rpc("rewind_to", { p_game_id: state.last_game_id, p_seq: seq, p_token: null }, () =>
-      setConfirmSeq(null),
-    );
-  }
-
-  const statusEyebrow =
-    status === "created" ? "LAG PHASE" : status === "finished" ? "FINAL" : `GAME ${games.length}`;
   const winnerSide: Side | null =
     status === "finished" ? (gamesWon.A >= state.race_to ? "A" : "B") : null;
 
+  const submitLag = (side: Side, value: string) => {
+    if (value) rpc("submit_lag", { p_match_id: matchId, p_side: side, p_value: value });
+  };
+  const submitTurn = (d: TurnDraft, onOk?: () => void) =>
+    rpc(
+      "submit_turn",
+      {
+        p_turn_id: crypto.randomUUID(),
+        p_game_id: state.current_game_id,
+        p_token: null,
+        p_expected_seq: state.next_seq,
+        p_batons_field: d.batons_field,
+        p_batons_baseline: d.batons_baseline,
+        p_baseline_kubbs: d.baseline_kubbs,
+        p_base_kubb_double: d.base_kubb_double,
+        p_penalty_kubbs: d.penalty_kubbs,
+        p_field_kubbs_left: d.field_kubbs_left,
+        p_advantage_line: d.field_kubbs_left > 0 ? d.advantage_line : null,
+        p_king_shots: d.king_shots,
+        p_king_hit: d.king_hit,
+        p_king_hit_early: d.king_hit_early,
+      },
+      onOk,
+    );
+  const rewind = (seq: number) => {
+    if (state.last_game_id)
+      rpc("rewind_to", { p_game_id: state.last_game_id, p_seq: seq, p_token: null }, () => {
+        setConfirmSeq(null);
+        setSheet(null);
+      });
+  };
+
+  const statusEyebrow =
+    status === "created" ? "LAG PHASE" : status === "finished" ? "FINAL" : `GAME ${games.length}`;
+
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      {/* Header (shared) */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <Link href="/matches" className="eyebrow text-muted-foreground hover:underline">
             ← Matches
           </Link>
-          <h1 className="display mt-2 text-3xl font-medium">
+          <h1 className="display mt-2 text-2xl font-medium sm:text-3xl">
             {nameOf("A")} <span className="text-muted-foreground">vs</span> {nameOf("B")}
           </h1>
         </div>
@@ -171,26 +172,24 @@ export function MatchClient({
           <div className="eyebrow text-muted-foreground">
             RACE TO {state.race_to} · {statusEyebrow}
           </div>
-          <div className="display text-4xl">
+          <div className="display text-3xl sm:text-4xl">
             {gamesWon.A} – {gamesWon.B}
           </div>
         </div>
       </div>
 
       {status === "finished" ? (
-        <div className="flex items-center justify-between gap-4 rounded-2xl border border-[var(--swedish-gold)]/50 bg-[var(--swedish-gold)]/12 px-5 py-4">
-          <div>
-            <div className="eyebrow text-[var(--gold-ink)]">🏆 MATCH OVER</div>
-            <div className="display mt-0.5 text-2xl">
-              {nameOf(winnerSide ?? "A")} won {Math.max(gamesWon.A, gamesWon.B)} to{" "}
-              {Math.min(gamesWon.A, gamesWon.B)}.
-            </div>
+        <div className="rounded-2xl border border-[var(--swedish-gold)]/50 bg-[var(--swedish-gold)]/12 px-5 py-4">
+          <div className="eyebrow text-[var(--gold-ink)]">🏆 MATCH OVER</div>
+          <div className="display mt-0.5 text-2xl">
+            {nameOf(winnerSide ?? "A")} won {Math.max(gamesWon.A, gamesWon.B)} to{" "}
+            {Math.min(gamesWon.A, gamesWon.B)}.
           </div>
         </div>
       ) : null}
 
-      {/* Three columns: Panel A · Pitch/Log · Panel B */}
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+      {/* ===== Desktop: three columns ===== */}
+      <div className="hidden gap-6 lg:flex lg:items-start">
         <Panel
           side="A"
           state={state}
@@ -199,22 +198,24 @@ export function MatchClient({
           confirmSeq={confirmSeq}
           setConfirmSeq={setConfirmSeq}
           pending={pending}
-          myUserId={myUserId}
           onLag={submitLag}
           onTurn={submitTurn}
           onRewind={rewind}
         />
-        <Spectator
-          state={state}
-          s={s}
-          turns={turns}
-          games={games}
-          confirmSeq={confirmSeq}
-          setConfirmSeq={setConfirmSeq}
-          pending={pending}
-          onRewind={rewind}
-          nameOf={nameOf}
-        />
+        <div className="flex w-[380px] flex-none flex-col gap-4">
+          <PitchCard s={s} nameOf={nameOf} done={status === "finished"} />
+          <div className="rounded-[18px] border border-foreground/10 bg-card p-4 shadow-sm">
+            <TurnLog
+              turns={turns}
+              games={games}
+              nameOf={nameOf}
+              confirmSeq={confirmSeq}
+              setConfirmSeq={setConfirmSeq}
+              pending={pending}
+              onRewind={rewind}
+            />
+          </div>
+        </div>
         <Panel
           side="B"
           state={state}
@@ -223,17 +224,153 @@ export function MatchClient({
           confirmSeq={confirmSeq}
           setConfirmSeq={setConfirmSeq}
           pending={pending}
-          myUserId={myUserId}
           onLag={submitLag}
           onTurn={submitTurn}
           onRewind={rewind}
         />
       </div>
+
+      {/* ===== Mobile: board-forward ===== */}
+      <div className="flex flex-col gap-4 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:hidden">
+        <MobileScore state={state} s={s} active={active} nameOf={nameOf} />
+        <PitchCard s={s} nameOf={nameOf} done={status === "finished"} />
+      </div>
+
+      {/* Mobile fixed action bar */}
+      {status !== "finished" ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
+          <div className="mx-auto flex max-w-6xl items-center gap-2">
+            {status === "created" ? (
+              <button
+                type="button"
+                onClick={() => setSheet("lag")}
+                className="h-12 flex-1 rounded-xl bg-primary text-sm font-semibold tracking-wide text-primary-foreground"
+              >
+                ENTER LAG
+              </button>
+            ) : active ? (
+              <button
+                type="button"
+                onClick={() => setSheet("turn")}
+                className="h-12 flex-1 rounded-xl bg-primary text-sm font-semibold tracking-wide text-primary-foreground"
+              >
+                ENTER TURN · {firstName(nameOf(active)).toUpperCase()}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setSheet("log")}
+              className="h-12 rounded-xl border border-border bg-card px-4 text-sm font-medium"
+            >
+              Log
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
+          <button
+            type="button"
+            onClick={() => setSheet("log")}
+            className="h-12 w-full rounded-xl border border-border bg-card text-sm font-medium"
+          >
+            View turn log
+          </button>
+        </div>
+      )}
+
+      {/* Mobile sheets */}
+      <Sheet open={sheet === "turn"} onClose={() => setSheet(null)} title="Enter turn">
+        {active ? (
+          <div className="px-4 pt-1 pb-2">
+            <TurnFormBody
+              key={`${state.current_game_id}-${state.next_seq}`}
+              s={s}
+              side={active}
+              pending={pending}
+              onSubmit={(d) => submitTurn(d, () => setSheet(null))}
+            />
+          </div>
+        ) : null}
+      </Sheet>
+
+      <Sheet open={sheet === "lag"} onClose={() => setSheet(null)} title="Enter lag">
+        <div className="flex flex-col gap-3 px-4 pt-1 pb-2">
+          <div className="eyebrow text-muted-foreground">LAG — TOSS AT THE KING</div>
+          <p className="text-xs text-muted-foreground">
+            Lower is better: <code>0.1</code> touching, <code>1</code>–<code>24</code> inches,{" "}
+            <code>98</code> not close, <code>99</code> knocked the king.
+          </p>
+          {(["A", "B"] as const).map((side) => (
+            <LagRow
+              key={side}
+              side={side}
+              name={nameOf(side)}
+              stored={side === "A" ? state.lag?.a : state.lag?.b}
+              pending={pending}
+              onLag={submitLag}
+            />
+          ))}
+        </div>
+      </Sheet>
+
+      <Sheet open={sheet === "log"} onClose={() => setSheet(null)} title="Turn log">
+        <div className="px-4 pt-1 pb-2">
+          <TurnLog
+            turns={turns}
+            games={games}
+            nameOf={nameOf}
+            confirmSeq={confirmSeq}
+            setConfirmSeq={setConfirmSeq}
+            pending={pending}
+            onRewind={rewind}
+          />
+        </div>
+      </Sheet>
     </div>
   );
 }
 
-/* ---------- Panel ---------- */
+/* ---------- Mobile compact scoreboard ---------- */
+
+function MobileScore({
+  state,
+  s,
+  active,
+  nameOf,
+}: {
+  state: MatchState;
+  s: GameState;
+  active: Side | null;
+  nameOf: (x: Side) => string;
+}) {
+  const gamesWon = state.games_won ?? { A: 0, B: 0 };
+  const line =
+    state.status === "created"
+      ? "Enter lag to begin"
+      : state.status === "finished"
+        ? "Match complete"
+        : active
+          ? `${firstName(nameOf(active))} to throw · ${s.round_cap} batons`
+          : "";
+  return (
+    <div className="sticky top-14 z-30 -mx-4 border-b border-border bg-background/90 px-4 py-2 backdrop-blur sm:top-16">
+      <div className="relative flex items-center justify-between gap-3">
+        {(["A", "B"] as const).map((x, i) => (
+          <div key={x} className={cn("flex min-w-0 items-center gap-2", i === 1 && "flex-row-reverse text-right")}>
+            <span className="size-2.5 flex-none rounded-full" style={{ background: SIDE_COLOR[x] }} />
+            <span className="truncate text-sm font-semibold">{firstName(nameOf(x))}</span>
+          </div>
+        ))}
+        <div className="display absolute left-1/2 -translate-x-1/2 text-xl">
+          {gamesWon.A}–{gamesWon.B}
+        </div>
+      </div>
+      {line ? <div className="eyebrow mt-1 text-center text-muted-foreground">{line}</div> : null}
+    </div>
+  );
+}
+
+/* ---------- Desktop panel ---------- */
 
 function Panel({
   side,
@@ -254,7 +391,6 @@ function Panel({
   confirmSeq: number | null;
   setConfirmSeq: (n: number | null) => void;
   pending: boolean;
-  myUserId: string;
   onLag: (side: Side, value: string) => void;
   onTurn: (d: TurnDraft) => void;
   onRewind: (seq: number) => void;
@@ -274,9 +410,7 @@ function Panel({
 
   let chip = { label: "SPECTATING", tone: "gray" as ChipTone };
   if (status === "created")
-    chip = lagLocked
-      ? { label: "LAG LOCKED", tone: "green" }
-      : { label: "ENTER LAG", tone: "gold" };
+    chip = lagLocked ? { label: "LAG LOCKED", tone: "green" } : { label: "ENTER LAG", tone: "gold" };
   else if (active === side) chip = { label: "YOUR TURN", tone: "blue" };
   else if (status === "live") chip = { label: "WAITING", tone: "gray" };
   else if (status === "finished")
@@ -294,9 +428,9 @@ function Panel({
     .filter(Boolean)
     .join(" · ");
 
-  // my last live turn (for FIX)
   const myTurns = (state.current_turns ?? []).filter((t) => t.side === side && !t.voided);
   const myLast = myTurns[myTurns.length - 1] ?? null;
+  const [lagV, setLagV] = useState("");
 
   return (
     <div className="flex-1 overflow-hidden rounded-[22px] border border-foreground/10 bg-card shadow-sm">
@@ -318,31 +452,51 @@ function Panel({
       <div className="flex flex-col gap-4 p-5">
         <div className="grid grid-cols-4 gap-2">
           <StatTile label="MY BASELINE" value={s.baseline[side]} />
-          <StatTile
-            label="TO CLEAR"
-            value={s.field[side]}
-            color={s.field[side] > 0 ? "var(--orange-4m)" : undefined}
-          />
+          <StatTile label="TO CLEAR" value={s.field[side]} color={s.field[side] > 0 ? "var(--orange-4m)" : undefined} />
           <StatTile label="KING SHOTS" value={s.king_shots[side]} />
           <StatTile label="GAMES" value={gamesWon[side]} color={SIDE_COLOR[side]} />
         </div>
 
         {status === "created" ? (
-          <LagBlock side={side} locked={lagLocked} value={lagVal} pending={pending} onLag={onLag} />
+          lagLocked ? (
+            <div className="rounded-2xl border border-border/60 bg-background p-4 text-sm font-medium text-[var(--dark-forest)]">
+              ✓ Locked{lagVal ? ` (${lagVal})` : ""} — waiting for the other side.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2.5 rounded-2xl border border-border/60 bg-background p-4">
+              <div className="eyebrow text-muted-foreground">LAG — TOSS AT THE KING</div>
+              <select value={lagV} onChange={(e) => setLagV(e.target.value)} className="w-full rounded-xl border border-input bg-card px-3 py-3 text-sm">
+                {LAG_OPTIONS.map((o) => (
+                  <option key={o.v} value={o.v}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <button type="button" disabled={pending || !lagV} onClick={() => onLag(side, lagV)} className="rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground disabled:opacity-50">
+                ENTER LAG
+              </button>
+            </div>
+          )
         ) : null}
 
-        {active === side ? (
-          <TurnForm
-            key={`${state.current_game_id}-${state.next_seq}`}
-            s={s}
-            side={side}
-            pending={pending}
-            onSubmit={onTurn}
-          />
-        ) : null}
+        {active === side ? <TurnFormBody s={s} side={side} pending={pending} onSubmit={onTurn} /> : null}
 
         {status === "live" && active !== side ? (
-          <WaitingCard state={state} side={side} /> ) : null}
+          <div className="flex flex-col gap-2.5 rounded-2xl border border-border/60 bg-background p-4">
+            <div className="flex items-center gap-2">
+              <span className="size-2 rounded-full bg-[var(--orange-4m)]" />
+              <span className="eyebrow text-muted-foreground">WAITING FOR OPPONENT</span>
+            </div>
+            {(() => {
+              const lastOpp = [...(state.current_turns ?? [])].reverse().find((t) => !t.voided && t.side === opp(side));
+              return lastOpp ? (
+                <div className="border-l-2 border-border pl-2.5 text-[12.5px] leading-relaxed text-muted-foreground">
+                  {firstName(parts[opp(side)]?.display_name)} — {turnText(lastOpp)}
+                </div>
+              ) : null;
+            })()}
+          </div>
+        ) : null}
 
         {myLast && status !== "created" ? (
           <FixPill
@@ -360,7 +514,7 @@ function Panel({
   );
 }
 
-/* ---------- small pieces ---------- */
+/* ---------- shared pieces ---------- */
 
 type ChipTone = "gold" | "green" | "blue" | "gray";
 const CHIP_CLASS: Record<ChipTone, string> = {
@@ -407,21 +561,21 @@ function Stepper({
         <div className="eyebrow text-[10px]">{label}</div>
         {sub ? <div className="mt-0.5 text-[10.5px] leading-tight text-muted-foreground">{sub}</div> : null}
       </div>
-      <div className="flex items-center gap-0.5">
+      <div className="flex items-center gap-1">
         <button
           type="button"
           onClick={() => onChange(Math.max(0, value - 1))}
           disabled={value <= 0}
-          className="grid size-9 place-items-center rounded-[10px] border border-border bg-background text-lg font-semibold disabled:opacity-40"
+          className="grid size-11 place-items-center rounded-xl border border-border bg-background text-xl font-semibold disabled:opacity-40"
         >
           −
         </button>
-        <span className="display w-10 text-center text-2xl">{value}</span>
+        <span className="display w-9 text-center text-2xl">{value}</span>
         <button
           type="button"
           onClick={() => onChange(Math.min(max, value + 1))}
           disabled={value >= max}
-          className="grid size-9 place-items-center rounded-[10px] border border-border bg-background text-lg font-semibold disabled:opacity-40"
+          className="grid size-11 place-items-center rounded-xl border border-border bg-background text-xl font-semibold disabled:opacity-40"
         >
           +
         </button>
@@ -436,7 +590,7 @@ function TogglePill({ label, on, onClick }: { label: string; on: boolean; onClic
       type="button"
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1.5 rounded-full border px-3.5 py-2 font-mono text-[10px] font-bold tracking-widest",
+        "flex items-center gap-1.5 rounded-full border px-3.5 py-2.5 font-mono text-[10px] font-bold tracking-widest",
         on
           ? "border-[var(--swedish-blue)]/45 bg-[var(--swedish-blue)]/10 text-[var(--swedish-blue)]"
           : "border-border bg-card text-muted-foreground",
@@ -448,59 +602,46 @@ function TogglePill({ label, on, onClick }: { label: string; on: boolean; onClic
   );
 }
 
-/* ---------- Lag ---------- */
-
-function LagBlock({
+function LagRow({
   side,
-  locked,
-  value,
+  name,
+  stored,
   pending,
   onLag,
 }: {
   side: Side;
-  locked: boolean;
-  value: string | null | undefined;
+  name: string;
+  stored: string | null | undefined;
   pending: boolean;
   onLag: (side: Side, value: string) => void;
 }) {
   const [v, setV] = useState("");
+  if (stored != null)
+    return (
+      <div className="rounded-xl border border-border/60 bg-background px-3 py-3 text-sm font-medium text-[var(--dark-forest)]">
+        ✓ {firstName(name)} locked ({stored})
+      </div>
+    );
   return (
-    <div className="flex flex-col gap-2.5 rounded-2xl border border-border/60 bg-background p-4">
-      <div className="eyebrow text-muted-foreground">LAG — TOSS AT THE KING</div>
-      {locked ? (
-        <div className="text-sm font-medium text-[var(--dark-forest)]">
-          ✓ Locked{value ? ` (${value})` : ""} — waiting for the other side.
-        </div>
-      ) : (
-        <>
-          <select
-            value={v}
-            onChange={(e) => setV(e.target.value)}
-            className="w-full rounded-xl border border-input bg-card px-3 py-3 text-sm"
-          >
-            {LAG_OPTIONS.map((o) => (
-              <option key={o.v} value={o.v}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            disabled={pending || !v}
-            onClick={() => onLag(side, v)}
-            className="rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground disabled:opacity-50"
-          >
-            ENTER LAG
-          </button>
-        </>
-      )}
+    <div className="flex flex-col gap-2">
+      <label className="eyebrow text-muted-foreground">{name}</label>
+      <div className="flex gap-2">
+        <select value={v} onChange={(e) => setV(e.target.value)} className="min-w-0 flex-1 rounded-xl border border-input bg-card px-3 py-3 text-sm">
+          {LAG_OPTIONS.map((o) => (
+            <option key={o.v} value={o.v}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <button type="button" disabled={pending || !v} onClick={() => onLag(side, v)} className="rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50">
+          Enter
+        </button>
+      </div>
     </div>
   );
 }
 
-/* ---------- Turn form ---------- */
-
-function TurnForm({
+function TurnFormBody({
   s,
   side,
   pending,
@@ -570,46 +711,17 @@ function TurnForm({
       </div>
 
       {errors[0] ? (
-        <div className="flex items-start gap-2 rounded-xl border border-destructive/25 bg-destructive/8 px-3 py-2.5 text-xs font-medium leading-snug text-destructive">
+        <div className="rounded-xl border border-destructive/25 bg-destructive/8 px-3 py-2.5 text-xs font-medium leading-snug text-destructive">
           {errors[0]}
         </div>
       ) : null}
 
-      <button
-        type="button"
-        disabled={pending || errors.length > 0}
-        onClick={() => onSubmit(d)}
-        className="rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground disabled:opacity-50"
-      >
+      <button type="button" disabled={pending || errors.length > 0} onClick={() => onSubmit(d)} className="h-12 rounded-xl bg-primary text-sm font-semibold tracking-wide text-primary-foreground disabled:opacity-50">
         ENTER TURN
       </button>
     </div>
   );
 }
-
-/* ---------- Waiting ---------- */
-
-function WaitingCard({ state, side }: { state: MatchState; side: Side }) {
-  const lastOpp = [...(state.current_turns ?? [])]
-    .reverse()
-    .find((t) => !t.voided && t.side === opp(side));
-  const oppName = firstName(state.participants?.[opp(side)]?.display_name);
-  return (
-    <div className="flex flex-col gap-2.5 rounded-2xl border border-border/60 bg-background p-4">
-      <div className="flex items-center gap-2">
-        <span className="size-2 rounded-full bg-[var(--orange-4m)]" />
-        <span className="eyebrow text-muted-foreground">WAITING FOR OPPONENT</span>
-      </div>
-      {lastOpp ? (
-        <div className="border-l-2 border-border pl-2.5 text-[12.5px] leading-relaxed text-muted-foreground">
-          {oppName} — {turnText(lastOpp)}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-/* ---------- Fix pill ---------- */
 
 function FixPill({
   seq,
@@ -630,18 +742,14 @@ function FixPill({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <button
-        type="button"
-        onClick={onAsk}
-        className="eyebrow self-start rounded-full border border-border bg-card px-3.5 py-2 text-[9px] text-muted-foreground"
-      >
+      <button type="button" onClick={onAsk} className="eyebrow self-start rounded-full border border-border bg-card px-3.5 py-2 text-[9px] text-muted-foreground">
         ↺ FIX MY LAST TURN · #{seq}
       </button>
       {confirming ? (
         <div className="flex items-center gap-2.5 rounded-xl border border-destructive/25 bg-destructive/6 px-3 py-2.5">
           <div className="flex-1 text-[11.5px] font-medium leading-snug text-destructive">
-            Rewind to before your turn #{seq}?
-            {laterCount > 0 ? ` This also voids the ${laterCount} turn(s) after it — they must be re-entered.` : ""}
+            Rewind to before turn #{seq}?
+            {laterCount > 0 ? ` This also voids the ${laterCount} turn(s) after it.` : ""}
           </div>
           <button type="button" disabled={pending} onClick={onConfirm} className="rounded-full bg-destructive px-3 py-1.5 font-mono text-[9px] font-bold tracking-wider text-white">
             REWIND
@@ -655,129 +763,109 @@ function FixPill({
   );
 }
 
-/* ---------- Spectator: pitch + log ---------- */
-
-function Spectator({
-  state,
-  s,
+function TurnLog({
   turns,
   games,
+  nameOf,
   confirmSeq,
   setConfirmSeq,
   pending,
   onRewind,
-  nameOf,
 }: {
-  state: MatchState;
-  s: GameState;
   turns: TurnRow[];
   games: { game_number: number; winner: Side | null }[];
+  nameOf: (x: Side) => string;
   confirmSeq: number | null;
   setConfirmSeq: (n: number | null) => void;
   pending: boolean;
   onRewind: (seq: number) => void;
-  nameOf: (x: Side) => string;
 }) {
-  const done = state.status === "finished";
   const lastGameNo = games.length;
   const priorGames = games.filter((g) => g.game_number < lastGameNo && g.winner);
-
   return (
-    <div className="flex w-full flex-col gap-4 lg:w-[380px] lg:flex-none">
-      {/* Pitch */}
-      <div className="flex flex-col gap-2 rounded-[18px] border border-foreground/10 bg-muted/40 p-4 shadow-sm">
-        <div className="flex items-baseline justify-between">
-          <span className="eyebrow text-muted-foreground">THE PITCH · SPECTATOR VIEW</span>
-        </div>
-        <div
-          className="overflow-hidden rounded-xl border-[1.5px] border-[var(--midnight-navy)]/25"
-          style={{ background: "linear-gradient(180deg, rgba(89,164,77,.06), rgba(89,164,77,.10))" }}
-        >
-          <PitchHalf side="A" s={s} nameOf={nameOf} />
-          <div className="flex items-center gap-2.5 px-3.5 py-0.5">
-            <div className="h-px flex-1 bg-[var(--midnight-navy)]/20" />
-            <div
-              className="grid h-9 w-6 place-items-center rounded border-[1.5px] border-[var(--midnight-navy)]/35"
-              style={{
-                background: done ? "var(--swedish-gold)" : "var(--swedish-gold)",
-                transform: done ? "rotate(78deg)" : "none",
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--midnight-navy)">
-                <path d="M4 18h16l-1.5-9-4 3L12 6l-2.5 6-4-3L4 18z" />
-              </svg>
-            </div>
-            <div className="h-px flex-1 bg-[var(--midnight-navy)]/20" />
-          </div>
-          <PitchHalf side="B" s={s} nameOf={nameOf} flip />
-        </div>
-      </div>
-
-      {/* Turn log */}
-      <div className="flex flex-col gap-2.5 rounded-[18px] border border-foreground/10 bg-card p-4 shadow-sm">
-        <span className="eyebrow text-muted-foreground">TURN LOG · APPEND-ONLY</span>
-        {turns.length === 0 && priorGames.length === 0 ? (
-          <div className="py-1.5 text-xs text-muted-foreground">No turns yet.</div>
-        ) : null}
-        {[...turns].reverse().map((t) => {
-          const later = turns.filter((x) => !x.voided && x.seq > t.seq).length;
-          return (
-            <div key={t.seq} className="flex flex-col gap-1.5 border-b border-border/50 pb-2">
-              <div className="flex items-start gap-2.5">
-                <div className={cn("w-6 shrink-0 pt-0.5 font-mono text-[10px] font-bold", t.voided ? "text-muted-foreground" : "text-muted-foreground")}>
-                  #{t.seq}
+    <div className="flex flex-col gap-2.5">
+      <span className="eyebrow text-muted-foreground">TURN LOG · APPEND-ONLY</span>
+      {turns.length === 0 && priorGames.length === 0 ? (
+        <div className="py-1.5 text-xs text-muted-foreground">No turns yet.</div>
+      ) : null}
+      {[...turns].reverse().map((t) => {
+        const later = turns.filter((x) => !x.voided && x.seq > t.seq).length;
+        return (
+          <div key={t.seq} className="flex flex-col gap-1.5 border-b border-border/50 pb-2">
+            <div className="flex items-start gap-2.5">
+              <div className="w-6 shrink-0 pt-0.5 font-mono text-[10px] font-bold text-muted-foreground">#{t.seq}</div>
+              <div className="min-w-0 flex-1">
+                <div
+                  className={cn("font-mono text-[9px] font-bold tracking-wider", t.voided && "line-through")}
+                  style={{ color: t.voided ? "var(--muted-foreground)" : SIDE_COLOR[t.side] }}
+                >
+                  {firstName(nameOf(t.side)).toUpperCase()}
+                  {t.voided ? " · VOIDED" : ""}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div
-                    className={cn("font-mono text-[9px] font-bold tracking-wider", t.voided && "line-through")}
-                    style={{ color: t.voided ? "var(--muted-foreground)" : SIDE_COLOR[t.side] }}
-                  >
-                    {firstName(nameOf(t.side)).toUpperCase()}
-                    {t.voided ? " · VOIDED" : ""}
-                  </div>
-                  <div className={cn("text-xs leading-snug text-muted-foreground", t.voided && "line-through")}>
-                    {turnText(t)}
-                  </div>
-                </div>
-                {!t.voided && confirmSeq == null ? (
-                  <button
-                    type="button"
-                    title="Rewind to before this turn"
-                    onClick={() => setConfirmSeq(t.seq)}
-                    className="grid size-7 shrink-0 place-items-center rounded-lg border border-border bg-card text-xs"
-                  >
-                    ↺
-                  </button>
-                ) : null}
+                <div className={cn("text-xs leading-snug text-muted-foreground", t.voided && "line-through")}>{turnText(t)}</div>
               </div>
-              {confirmSeq === t.seq ? (
-                <div className="flex items-center gap-2.5 rounded-lg border border-destructive/25 bg-destructive/6 px-2.5 py-2">
-                  <div className="flex-1 text-[11.5px] font-medium leading-snug text-destructive">
-                    Rewind to before turn #{t.seq}?
-                    {later > 0 ? ` This also voids the ${later} turn(s) after it.` : ""}
-                  </div>
-                  <button type="button" disabled={pending} onClick={() => onRewind(t.seq)} className="rounded-full bg-destructive px-3 py-1.5 font-mono text-[9px] font-bold tracking-wider text-white">
-                    REWIND
-                  </button>
-                  <button type="button" onClick={() => setConfirmSeq(null)} className="rounded-full border border-border px-3 py-1.5 font-mono text-[9px] font-bold tracking-wider text-muted-foreground">
-                    KEEP
-                  </button>
-                </div>
+              {!t.voided && confirmSeq == null ? (
+                <button type="button" title="Rewind to before this turn" onClick={() => setConfirmSeq(t.seq)} className="grid size-8 shrink-0 place-items-center rounded-lg border border-border bg-card text-xs">
+                  ↺
+                </button>
               ) : null}
             </div>
-          );
-        })}
-        {priorGames
-          .slice()
-          .reverse()
-          .map((g) => (
-            <div key={g.game_number} className="flex items-start gap-2.5 border-b border-border/50 pb-2">
-              <div className="w-6 shrink-0 pt-0.5 font-mono text-[10px] font-bold text-muted-foreground">G{g.game_number}</div>
-              <div className="font-mono text-[9px] font-bold tracking-wider text-muted-foreground">
-                GAME {g.game_number} — {firstName(nameOf(g.winner ?? "A")).toUpperCase()} WON
+            {confirmSeq === t.seq ? (
+              <div className="flex items-center gap-2.5 rounded-lg border border-destructive/25 bg-destructive/6 px-2.5 py-2">
+                <div className="flex-1 text-[11.5px] font-medium leading-snug text-destructive">
+                  Rewind to before turn #{t.seq}?
+                  {later > 0 ? ` This also voids the ${later} turn(s) after it.` : ""}
+                </div>
+                <button type="button" disabled={pending} onClick={() => onRewind(t.seq)} className="rounded-full bg-destructive px-3 py-1.5 font-mono text-[9px] font-bold tracking-wider text-white">
+                  REWIND
+                </button>
+                <button type="button" onClick={() => setConfirmSeq(null)} className="rounded-full border border-border px-3 py-1.5 font-mono text-[9px] font-bold tracking-wider text-muted-foreground">
+                  KEEP
+                </button>
               </div>
+            ) : null}
+          </div>
+        );
+      })}
+      {priorGames
+        .slice()
+        .reverse()
+        .map((g) => (
+          <div key={g.game_number} className="flex items-start gap-2.5 border-b border-border/50 pb-2">
+            <div className="w-6 shrink-0 pt-0.5 font-mono text-[10px] font-bold text-muted-foreground">G{g.game_number}</div>
+            <div className="font-mono text-[9px] font-bold tracking-wider text-muted-foreground">
+              GAME {g.game_number} — {firstName(nameOf(g.winner ?? "A")).toUpperCase()} WON
             </div>
-          ))}
+          </div>
+        ))}
+    </div>
+  );
+}
+
+/* ---------- pitch ---------- */
+
+function PitchCard({ s, nameOf, done }: { s: GameState; nameOf: (x: Side) => string; done: boolean }) {
+  return (
+    <div className="flex flex-col gap-2 rounded-[18px] border border-foreground/10 bg-muted/40 p-4 shadow-sm">
+      <span className="eyebrow text-muted-foreground">THE PITCH · SPECTATOR VIEW</span>
+      <div
+        className="overflow-hidden rounded-xl border-[1.5px] border-[var(--midnight-navy)]/25"
+        style={{ background: "linear-gradient(180deg, rgba(89,164,77,.06), rgba(89,164,77,.10))" }}
+      >
+        <PitchHalf side="A" s={s} nameOf={nameOf} />
+        <div className="flex items-center gap-2.5 px-3.5 py-0.5">
+          <div className="h-px flex-1 bg-[var(--midnight-navy)]/20" />
+          <div
+            className="grid h-9 w-6 place-items-center rounded border-[1.5px] border-[var(--midnight-navy)]/35"
+            style={{ background: "var(--swedish-gold)", transform: done ? "rotate(78deg)" : "none" }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--midnight-navy)">
+              <path d="M4 18h16l-1.5-9-4 3L12 6l-2.5 6-4-3L4 18z" />
+            </svg>
+          </div>
+          <div className="h-px flex-1 bg-[var(--midnight-navy)]/20" />
+        </div>
+        <PitchHalf side="B" s={s} nameOf={nameOf} flip />
       </div>
     </div>
   );
@@ -796,7 +884,7 @@ function PitchHalf({
 }) {
   const o = opp(side);
   const baseline = s.baseline[side];
-  const clearCount = s.field[o]; // kubbs standing on this half that the opponent must clear
+  const clearCount = s.field[o];
   const adv = s.advantage[side];
   const slots = (
     <div className="flex justify-center gap-2.5">
@@ -804,11 +892,7 @@ function PitchHalf({
         <div
           key={i}
           className="h-[30px] w-5 rounded-[3px]"
-          style={
-            i < baseline
-              ? { background: SIDE_COLOR[side] }
-              : { border: "1.5px dashed rgba(19,37,74,.30)", opacity: 0.7 }
-          }
+          style={i < baseline ? { background: SIDE_COLOR[side] } : { border: "1.5px dashed rgba(19,37,74,.30)", opacity: 0.7 }}
         />
       ))}
     </div>
@@ -839,7 +923,6 @@ function PitchHalf({
       <div className="flex-1 border-t-2 border-dashed border-[var(--swedish-gold)]" />
     </div>
   );
-
   return (
     <div className="flex flex-col gap-2.5 px-3.5 py-3">
       {flip ? (
