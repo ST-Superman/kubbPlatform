@@ -50,7 +50,7 @@ export function ChallengeButton({
       type="button"
       onClick={challenge}
       disabled={pending}
-      className={ctaClass("secondary", "sm")}
+      className={ctaClass("primary")}
     >
       {pending ? "STARTING…" : `CHALLENGE ${label.toUpperCase()}`}
     </button>
