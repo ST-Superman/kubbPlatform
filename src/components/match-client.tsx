@@ -31,6 +31,23 @@ const SIDE_COLOR: Record<Side, string> = {
 const opp = (x: Side): Side => (x === "A" ? "B" : "A");
 const firstName = (n: string | null | undefined) => (n ?? "—").split(/\s+/)[0];
 
+function ProfileLink({
+  handle,
+  className,
+  children,
+}: {
+  handle: string | null | undefined;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  if (!handle) return <span className={className}>{children}</span>;
+  return (
+    <Link href={`/u/${handle}`} className={cn(className, "hover:underline")}>
+      {children}
+    </Link>
+  );
+}
+
 const TURN_ERRORS: Record<string, string> = {
   batons_over_cap: "Too many batons for this round's cap.",
   no_batons: "Enter at least one baton (or an early-king foul).",
@@ -165,7 +182,9 @@ export function MatchClient({
             ← Matches
           </Link>
           <h1 className="display mt-2 text-2xl font-medium sm:text-3xl">
-            {nameOf("A")} <span className="text-muted-foreground">vs</span> {nameOf("B")}
+            <ProfileLink handle={parts.A?.handle}>{nameOf("A")}</ProfileLink>{" "}
+            <span className="text-muted-foreground">vs</span>{" "}
+            <ProfileLink handle={parts.B?.handle}>{nameOf("B")}</ProfileLink>
           </h1>
         </div>
         <div className="text-right">
@@ -179,12 +198,32 @@ export function MatchClient({
       </div>
 
       {status === "finished" ? (
-        <div className="rounded-2xl border border-[var(--swedish-gold)]/50 bg-[var(--swedish-gold)]/12 px-5 py-4">
-          <div className="eyebrow text-[var(--gold-ink)]">🏆 MATCH OVER</div>
-          <div className="display mt-0.5 text-2xl">
-            {nameOf(winnerSide ?? "A")} won {Math.max(gamesWon.A, gamesWon.B)} to{" "}
-            {Math.min(gamesWon.A, gamesWon.B)}.
+        <div className="flex flex-col gap-3 rounded-2xl border border-[var(--swedish-gold)]/50 bg-[var(--swedish-gold)]/12 px-5 py-4">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <div className="eyebrow text-[var(--gold-ink)]">🏆 MATCH OVER</div>
+              <div className="display mt-0.5 text-2xl">{nameOf(winnerSide ?? "A")} wins</div>
+            </div>
+            <div className="display text-4xl tabular-nums">
+              {gamesWon.A}–{gamesWon.B}
+            </div>
           </div>
+          {games.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {games.map((g) => (
+                <span
+                  key={g.game_number}
+                  className="rounded-full border px-2.5 py-1 font-mono text-[9px] font-bold tracking-wider"
+                  style={{
+                    color: g.winner ? SIDE_COLOR[g.winner] : "var(--muted-foreground)",
+                    borderColor: "currentColor",
+                  }}
+                >
+                  G{g.game_number} · {g.winner ? firstName(nameOf(g.winner)).toUpperCase() : "—"}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -358,7 +397,9 @@ function MobileScore({
         {(["A", "B"] as const).map((x, i) => (
           <div key={x} className={cn("flex min-w-0 items-center gap-2", i === 1 && "flex-row-reverse text-right")}>
             <span className="size-2.5 flex-none rounded-full" style={{ background: SIDE_COLOR[x] }} />
-            <span className="truncate text-sm font-semibold">{firstName(nameOf(x))}</span>
+            <ProfileLink handle={(state.participants ?? {})[x]?.handle} className="truncate text-sm font-semibold">
+              {firstName(nameOf(x))}
+            </ProfileLink>
           </div>
         ))}
         <div className="display absolute left-1/2 -translate-x-1/2 text-xl">
@@ -443,7 +484,9 @@ function Panel({
           {initials}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="truncate font-semibold">{name}</div>
+          <ProfileLink handle={parts[side]?.handle} className="block truncate font-semibold">
+            {name}
+          </ProfileLink>
           <div className="eyebrow mt-0.5 text-muted-foreground">{meta}</div>
         </div>
         <Chip label={chip.label} tone={chip.tone} />

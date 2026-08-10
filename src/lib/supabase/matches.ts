@@ -8,7 +8,10 @@ export type Participant = {
   team_id: string | null;
   display_name: string | null;
   user_id: string | null;
+  handle: string | null;
 };
+
+export type MatchResult = "won" | "lost" | null;
 
 export type GameState = {
   baseline: Record<Side, number>;
@@ -65,6 +68,9 @@ export type MatchSummary = {
   created_at: string;
   my_side: Side | null;
   opponent: string | null;
+  opponent_handle: string | null;
+  games_won: Record<Side, number>;
+  result: MatchResult;
 };
 
 /** Matches the signed-in user created or plays in (newest first). */
@@ -98,4 +104,39 @@ export async function getOpponents(): Promise<Opponent[]> {
   const { data, error } = await supabase.rpc("list_opponents");
   if (error || !data) return [];
   return data as Opponent[];
+}
+
+export type ProfileMatch = {
+  match_id: string;
+  status: MatchStatus;
+  race_to: number;
+  created_at: string;
+  my_side: Side | null;
+  opponent: string | null;
+  opponent_handle: string | null;
+  games_won: Record<Side, number>;
+  result: MatchResult;
+};
+
+export type PlayerProfile = {
+  player: {
+    id: string;
+    user_id: string | null;
+    handle: string;
+    display_name: string;
+    avatar_url: string | null;
+    created_at: string;
+  };
+  record: { wins: number; losses: number };
+  matches: ProfileMatch[];
+};
+
+/** Public player profile (record + match history) by handle, or null if unknown. */
+export async function getPlayerProfile(handle: string): Promise<PlayerProfile | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("player_profile", {
+    p_handle: handle,
+  });
+  if (error || !data) return null;
+  return data as PlayerProfile;
 }

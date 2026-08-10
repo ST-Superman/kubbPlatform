@@ -56,12 +56,22 @@ export default async function DashboardPage() {
             <span className="text-muted-foreground">Email</span>
             <span className="font-medium">{user.email}</span>
           </div>
-          <Link
-            href="/profile"
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-2 w-fit")}
-          >
-            Edit profile
-          </Link>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Link
+              href="/profile"
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            >
+              Edit profile
+            </Link>
+            {profile ? (
+              <Link
+                href={`/u/${profile.handle}`}
+                className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+              >
+                View public profile
+              </Link>
+            ) : null}
+          </div>
         </CardContent>
       </Card>
 

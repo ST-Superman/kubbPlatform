@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import { type MatchSummary, type Opponent } from "@/lib/supabase/matches";
+import { MatchRow } from "@/components/match-row";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,6 +73,9 @@ export function MatchesClient({
       if (id) router.push(`/matches/${id}`);
     });
   }
+
+  const inProgress = initial.filter((m) => m.status === "created" || m.status === "live");
+  const completed = initial.filter((m) => m.status === "finished" || m.status === "abandoned");
 
   return (
     <div className="flex flex-col gap-6">
@@ -166,22 +170,24 @@ export function MatchesClient({
       {initial.length === 0 ? (
         <p className="text-sm text-muted-foreground">No matches yet.</p>
       ) : (
-        <div className="flex flex-col gap-2">
-          <span className="eyebrow text-muted-foreground">Your matches</span>
-          {initial.map((m) => (
-            <Link
-              key={m.match_id}
-              href={`/matches/${m.match_id}`}
-              className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3 text-sm ring-1 ring-foreground/5 hover:bg-muted"
-            >
-              <span className="font-medium">vs {m.opponent ?? "—"}</span>
-              <span className="flex items-center gap-3 text-muted-foreground">
-                <span className="font-mono text-xs">race to {m.race_to}</span>
-                <span className="eyebrow">{m.status}</span>
-              </span>
-            </Link>
-          ))}
-        </div>
+        <>
+          {inProgress.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              <span className="eyebrow text-muted-foreground">In progress</span>
+              {inProgress.map((m) => (
+                <MatchRow key={m.match_id} row={m} />
+              ))}
+            </div>
+          ) : null}
+          {completed.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              <span className="eyebrow text-muted-foreground">Completed</span>
+              {completed.map((m) => (
+                <MatchRow key={m.match_id} row={m} />
+              ))}
+            </div>
+          ) : null}
+        </>
       )}
     </div>
   );
