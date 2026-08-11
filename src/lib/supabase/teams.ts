@@ -12,6 +12,7 @@ export type TeamStats = {
   members: TeamMember[];
   metrics: SideMetrics;
   matches_counted: number;
+  record: { wins: number; losses: number };
 };
 
 /** Team-as-a-whole throwing stats + roster, or null if the team doesn't exist. */

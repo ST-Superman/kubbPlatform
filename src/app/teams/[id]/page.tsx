@@ -22,7 +22,7 @@ export default async function TeamStatsPage({
   const stats = await getTeamStats(id);
   if (!stats) notFound();
 
-  const { team, members, metrics, matches_counted } = stats;
+  const { team, members, metrics, matches_counted, record } = stats;
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-3 px-4 py-6">
@@ -33,13 +33,21 @@ export default async function TeamStatsPage({
             <div className="eyebrow text-[9px] tracking-[1.3px] text-muted-foreground">TEAM</div>
             <p className="truncate text-[18px] font-semibold">{team.name}</p>
           </div>
-          <div className="shrink-0 text-right">
-            <div className="display text-[24px] leading-none italic tabular-nums">
-              {matches_counted}
+          <div className="flex shrink-0 items-center gap-4 text-right">
+            <div>
+              <div className="display text-[24px] leading-none italic tabular-nums">
+                {record.wins}–{record.losses}
+              </div>
+              <div className="eyebrow mt-1 text-[9px] tracking-[1.3px] text-muted-foreground">RECORD</div>
             </div>
-            <div className="flex items-center justify-end gap-1">
-              <span className="eyebrow text-[9px] tracking-[1.3px] text-muted-foreground">MATCHES</span>
-              <InfoDot title="Matches">The number of finished matches feeding these team stats.</InfoDot>
+            <div>
+              <div className="display text-[24px] leading-none italic tabular-nums">
+                {matches_counted}
+              </div>
+              <div className="flex items-center justify-end gap-1">
+                <span className="eyebrow text-[9px] tracking-[1.3px] text-muted-foreground">MATCHES</span>
+                <InfoDot title="Matches">The number of finished matches feeding these team stats.</InfoDot>
+              </div>
             </div>
           </div>
         </div>

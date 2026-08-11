@@ -31,14 +31,15 @@ function friendlyClaimError(message: string | undefined): string {
 export async function claimPlayer(
   token: string,
   next?: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; code?: string }> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("claim_player", {
     p_claim_token: token,
   });
 
   if (error) {
-    return { error: friendlyClaimError(error.message) };
+    const code = error.message?.match(/[a-z_]+/)?.[0];
+    return { error: friendlyClaimError(error.message), code };
   }
 
   const safeNext =

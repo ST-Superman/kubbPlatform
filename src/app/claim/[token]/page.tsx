@@ -20,6 +20,7 @@ type Preview = {
   display_name?: string;
   claimed_at?: string;
   masked_handle?: string;
+  matches?: { created_at: string; opponent: string | null; result: "won" | "lost" | null }[];
 };
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -162,8 +163,34 @@ export default async function ClaimPage({
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          {preview.matches && preview.matches.length > 0 ? (
+            <div className="flex flex-col gap-1.5 rounded-xl border border-border bg-muted/30 p-3">
+              <span className="eyebrow text-[9px] text-muted-foreground">RECORDED MATCHES</span>
+              {preview.matches.map((mm, i) => (
+                <div key={i} className="flex items-center gap-2 text-[12px]">
+                  <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                    {new Date(mm.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">vs {mm.opponent ?? "—"}</span>
+                  <span
+                    className={cn(
+                      "shrink-0 font-mono text-[9px] font-bold tracking-widest",
+                      mm.result === "won"
+                        ? "text-[var(--dark-forest)]"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {mm.result ? mm.result.toUpperCase() : "—"}
+                  </span>
+                </div>
+              ))}
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Claiming this player connects these results to your Kubb Platform profile.
+              </p>
+            </div>
+          ) : null}
           {user ? (
-            <ClaimConfirm token={token} displayName={name} next={next} />
+            <ClaimConfirm token={token} displayName={name} next={next} userEmail={user.email ?? undefined} />
           ) : (
             <div className="flex flex-col gap-3">
               <Suspense>
