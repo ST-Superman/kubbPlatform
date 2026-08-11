@@ -7,6 +7,7 @@ import { getPlayerProfile, getPlayerStats } from "@/lib/supabase/matches";
 import { MatchHistory } from "@/components/match-history";
 import { ChallengeButton } from "@/components/challenge-button";
 import { StatsBlock } from "@/components/stats-block";
+import { InfoDot } from "@/components/info-dot";
 import { ctaClass } from "@/components/brand";
 
 const firstName = (n: string) => n.split(/\s+/)[0];
@@ -89,7 +90,10 @@ export default async function PublicProfilePage({
           </div>
           <div className="flex-1" />
           <div className="flex flex-col items-end gap-1">
-            <div className="eyebrow text-[10px] tracking-[1.2px] text-muted-foreground">LAST 5</div>
+            <div className="flex items-center gap-1">
+              <span className="eyebrow text-[10px] tracking-[1.2px] text-muted-foreground">LAST 5</span>
+              <InfoDot title="Last 5">Your 5 most recent completed matches, shown oldest → latest.</InfoDot>
+            </div>
             {last5.length > 0 ? (
               <>
                 <div className="flex gap-1">
@@ -135,9 +139,12 @@ export default async function PublicProfilePage({
 
       {/* Singles throwing stats */}
       <div className="mt-1 flex flex-col gap-2.5 rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(19,24,43,.04),0_4px_10px_rgba(19,24,43,.04)]">
-        <span className="eyebrow text-[10px] tracking-[1.5px] text-muted-foreground">
-          SINGLES STATS
-          {stats && stats.matches_counted > 0 ? ` · BASED ON ${stats.matches_counted} MATCH${stats.matches_counted === 1 ? "" : "ES"}` : ""}
+        <span className="flex items-center gap-1.5">
+          <span className="eyebrow text-[10px] tracking-[1.5px] text-muted-foreground">
+            SINGLES STATS
+            {stats && stats.matches_counted > 0 ? ` · BASED ON ${stats.matches_counted} MATCH${stats.matches_counted === 1 ? "" : "ES"}` : ""}
+          </span>
+          <InfoDot title="Singles stats">Based on singles (1v1) matches only — team and doubles matches aren&apos;t included, so this can differ from your total played.</InfoDot>
         </span>
         {stats && stats.matches_counted > 0 ? (
           <StatsBlock metrics={stats.metrics} />

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import { type Challenge } from "@/lib/supabase/challenges";
+import { InfoDot } from "@/components/info-dot";
 
 const firstName = (n: string | null) => (n ?? "Player").split(/\s+/)[0];
 
@@ -47,7 +48,10 @@ export function ChallengeInbox({ initial }: { initial: Challenge[] }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="eyebrow text-[10px] tracking-[1.5px] text-muted-foreground">CHALLENGES</span>
+      <span className="flex items-center gap-1.5">
+        <span className="eyebrow text-[10px] tracking-[1.5px] text-muted-foreground">CHALLENGES</span>
+        <InfoDot term="race-to" />
+      </span>
       {items.map((c) => {
         const busy = busyId === c.id;
         const name = c.other_display_name ?? "Player";

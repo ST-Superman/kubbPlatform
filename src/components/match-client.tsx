@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -30,6 +30,7 @@ import {
 import { Sheet } from "@/components/ui/sheet";
 import { MatchInvite } from "@/components/match-invite";
 import { MatchActions } from "@/components/match-actions";
+import { InfoDot } from "@/components/info-dot";
 import { cn } from "@/lib/utils";
 
 const SIDE_COLOR: Record<Side, string> = {
@@ -727,9 +728,9 @@ function Panel({
 
       <div className="flex flex-col gap-4 p-5">
         <div className="grid grid-cols-4 gap-2">
-          <StatTile label="MY BASELINE" value={s.baseline[side]} />
-          <StatTile label="MUST CLEAR" value={s.field[side]} color={s.field[side] > 0 ? "var(--orange-4m)" : undefined} />
-          <StatTile label="KING SHOTS" value={s.king_shots[side]} />
+          <StatTile label="MY BASELINE" value={s.baseline[side]} info={<InfoDot term="baseline-kubb" />} />
+          <StatTile label="MUST CLEAR" value={s.field[side]} color={s.field[side] > 0 ? "var(--orange-4m)" : undefined} info={<InfoDot term="field-kubb" />} />
+          <StatTile label="KING SHOTS" value={s.king_shots[side]} info={<InfoDot term="king-shot" />} />
           <StatTile label="GAMES" value={gamesWon[side]} color={SIDE_COLOR[side]} />
         </div>
 
@@ -818,10 +819,13 @@ function Chip({ label, tone }: { label: string; tone: ChipTone }) {
   );
 }
 
-function StatTile({ label, value, color }: { label: string; value: number; color?: string }) {
+function StatTile({ label, value, color, info }: { label: string; value: number; color?: string; info?: ReactNode }) {
   return (
     <div className="rounded-xl border border-border/60 bg-background px-3 py-2.5">
-      <div className="eyebrow text-[9px] text-muted-foreground">{label}</div>
+      <div className="flex items-center gap-1">
+        <span className="eyebrow text-[9px] text-muted-foreground">{label}</span>
+        {info}
+      </div>
       <div className="display mt-0.5 text-2xl" style={color ? { color } : undefined}>
         {value}
       </div>
@@ -835,17 +839,22 @@ function Stepper({
   value,
   max,
   onChange,
+  info,
 }: {
   label: string;
   sub?: string;
   value: number;
   max: number;
   onChange: (v: number) => void;
+  info?: ReactNode;
 }) {
   return (
     <div className="flex items-center gap-2.5">
       <div className="min-w-0 flex-1">
-        <div className="eyebrow text-[10px]">{label}</div>
+        <div className="flex items-center gap-1">
+          <span className="eyebrow text-[10px]">{label}</span>
+          {info}
+        </div>
         {sub ? <div className="mt-0.5 text-[10.5px] leading-tight text-muted-foreground">{sub}</div> : null}
       </div>
       <div className="flex items-center gap-1">
@@ -950,22 +959,26 @@ function TurnFormBody({
     <div className="flex flex-col gap-3 rounded-2xl border-[1.5px] border-[var(--swedish-blue)]/30 bg-card p-4 shadow-[0_4px_14px_rgba(0,106,167,0.08)]">
       <div className="flex items-baseline justify-between">
         <div className="eyebrow text-[var(--swedish-blue)]">ENTER TURN</div>
-        <div className={cn("font-mono text-[10px] font-bold tracking-wider", overCap ? "text-destructive" : "text-muted-foreground")}>
+        <div className={cn("flex items-center gap-1 font-mono text-[10px] font-bold tracking-wider", overCap ? "text-destructive" : "text-muted-foreground")}>
           {used} / {s.round_cap} BATONS
+          <InfoDot term="round-cap" />
         </div>
       </div>
 
       {hasField ? (
         <>
-          <Stepper label="PENALTY KUBBS" sub="thrown out / re-thrown" value={d.penalty_kubbs} max={s.field[side]} onChange={(v) => set({ penalty_kubbs: v })} />
-          <Stepper label="BATONS TO CLEAR FIELD" sub={`${s.field[side]} field kubb(s) on your side`} value={d.batons_field} max={6} onChange={(v) => set({ batons_field: v })} />
-          <Stepper label="FIELD KUBBS LEFT" sub={`of ${s.field[side]} — still standing after your throws`} value={d.field_kubbs_left} max={s.field[side]} onChange={(v) => set({ field_kubbs_left: v })} />
+          <Stepper label="PENALTY KUBBS" sub="thrown out / re-thrown" value={d.penalty_kubbs} max={s.field[side]} onChange={(v) => set({ penalty_kubbs: v })} info={<InfoDot term="penalty-kubb" />} />
+          <Stepper label="BATONS TO CLEAR FIELD" sub={`${s.field[side]} field kubb(s) on your side`} value={d.batons_field} max={6} onChange={(v) => set({ batons_field: v })} info={<InfoDot term="field-kubb" />} />
+          <Stepper label="FIELD KUBBS LEFT" sub={`of ${s.field[side]} — still standing after your throws`} value={d.field_kubbs_left} max={s.field[side]} onChange={(v) => set({ field_kubbs_left: v })} info={<InfoDot term="field-kubb" />} />
         </>
       ) : null}
 
       {d.field_kubbs_left > 0 ? (
         <div className="flex flex-col gap-1.5 rounded-xl border border-[var(--swedish-gold)]/50 bg-[var(--swedish-gold)]/10 p-3">
-          <div className="eyebrow text-[10px] text-[var(--gold-ink)]">ADVANTAGE LINE GIVEN — YOU LEFT FIELD KUBBS</div>
+          <div className="flex items-center gap-1">
+            <span className="eyebrow text-[10px] text-[var(--gold-ink)]">ADVANTAGE LINE GIVEN — YOU LEFT FIELD KUBBS</span>
+            <InfoDot term="advantage-line-given" />
+          </div>
           <select value={d.advantage_line} onChange={(e) => set({ advantage_line: e.target.value })} className="w-full rounded-lg border border-input bg-card px-3 py-2.5 text-sm">
             {ADV_LINE_OPTIONS.map((o) => (
               <option key={o.v} value={o.v}>
@@ -977,8 +990,9 @@ function TurnFormBody({
       ) : null}
 
       {hasField ? (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <TogglePill label="BASE KUBB DOUBLE" on={d.base_kubb_double} onClick={() => set({ base_kubb_double: !d.base_kubb_double })} />
+          <InfoDot term="base-kubb-double" />
         </div>
       ) : null}
 
@@ -988,13 +1002,20 @@ function TurnFormBody({
         value={d.batons_baseline}
         max={6}
         onChange={(v) => set({ batons_baseline: v })}
+        info={<InfoDot term="eight-meter-line" />}
       />
-      <Stepper label="BASELINE KUBBS HIT" sub="by those batons — do NOT count the double" value={d.baseline_kubbs} max={maxBaselineHits(s, d, side)} onChange={(v) => set({ baseline_kubbs: v })} />
-      <Stepper label="KING SHOTS" sub="attempts at the King this turn" value={d.king_shots} max={6} onChange={(v) => set({ king_shots: v })} />
+      <Stepper label="BASELINE KUBBS HIT" sub="by those batons — do NOT count the double" value={d.baseline_kubbs} max={maxBaselineHits(s, d, side)} onChange={(v) => set({ baseline_kubbs: v })} info={<InfoDot term="base-kubb-double" />} />
+      <Stepper label="KING SHOTS" sub="attempts at the King this turn" value={d.king_shots} max={6} onChange={(v) => set({ king_shots: v })} info={<InfoDot term="king-shot" />} />
 
-      <div className="flex flex-wrap gap-2">
-        <TogglePill label="KING HIT — WIN" on={d.king_hit} onClick={() => set({ king_hit: !d.king_hit })} />
-        <TogglePill label="KING EARLY — FOUL" on={d.king_hit_early} onClick={() => set({ king_hit_early: !d.king_hit_early })} />
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="flex items-center gap-1">
+          <TogglePill label="KING HIT — WIN" on={d.king_hit} onClick={() => set({ king_hit: !d.king_hit })} />
+          <InfoDot term="king" />
+        </span>
+        <span className="flex items-center gap-1">
+          <TogglePill label="KING EARLY — FOUL" on={d.king_hit_early} onClick={() => set({ king_hit_early: !d.king_hit_early })} />
+          <InfoDot term="king-early" />
+        </span>
       </div>
 
       {errors[0] ? (
@@ -1073,7 +1094,10 @@ export function TurnLog({
   const priorGames = games.filter((g) => g.game_number < lastGameNo && g.winner);
   return (
     <div className="flex flex-col gap-2.5">
-      <span className="eyebrow text-muted-foreground">TURN LOG</span>
+      <span className="flex items-center gap-1.5">
+        <span className="eyebrow text-muted-foreground">TURN LOG</span>
+        {!readOnly ? <InfoDot term="rewind" /> : null}
+      </span>
       {turns.length === 0 && priorGames.length === 0 ? (
         <div className="py-1.5 text-xs text-muted-foreground">No turns yet.</div>
       ) : null}

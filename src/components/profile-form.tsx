@@ -7,6 +7,7 @@ import { type Profile } from "@/lib/supabase/profiles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { InfoDot } from "@/components/info-dot";
 
 export function ProfileForm({ profile }: { profile: Profile }) {
   const [state, formAction, pending] = useActionState<ProfileState, FormData>(
@@ -17,7 +18,10 @@ export function ProfileForm({ profile }: { profile: Profile }) {
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <Label htmlFor="handle">Handle</Label>
+        <div className="flex items-center gap-1.5">
+          <Label htmlFor="handle">Handle</Label>
+          <InfoDot term="handle" />
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground">@</span>
           <Input
@@ -37,7 +41,10 @@ export function ProfileForm({ profile }: { profile: Profile }) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="display_name">Display name</Label>
+        <div className="flex items-center gap-1.5">
+          <Label htmlFor="display_name">Display name</Label>
+          <InfoDot term="display-name" />
+        </div>
         <Input
           id="display_name"
           name="display_name"

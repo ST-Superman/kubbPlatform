@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { type ActivePlayer, type ManagedPlayer } from "@/lib/supabase/players";
 import { ManagedPlayers } from "@/components/managed-players";
+import { InfoDot } from "@/components/info-dot";
 import { cn } from "@/lib/utils";
 
 type Tab = "current" | "new";
@@ -23,27 +24,33 @@ export function PlayersTabs({
   return (
     <div className="flex flex-col gap-5">
       {/* Segmented tabs */}
-      <div className="flex gap-1 rounded-full border border-border bg-muted/40 p-1">
-        {(
-          [
-            ["current", "Current Players"],
-            ["new", "New Players"],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setTab(key)}
-            className={cn(
-              "h-9 flex-1 rounded-full font-mono text-[11px] font-bold uppercase tracking-[1.2px] transition-colors",
-              tab === key
-                ? "bg-card text-foreground shadow-sm ring-1 ring-foreground/10"
-                : "text-muted-foreground",
-            )}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="flex items-center gap-2">
+        <div className="flex flex-1 gap-1 rounded-full border border-border bg-muted/40 p-1">
+          {(
+            [
+              ["current", "Current Players"],
+              ["new", "New Players"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={cn(
+                "h-9 flex-1 rounded-full font-mono text-[11px] font-bold uppercase tracking-[1.2px] transition-colors",
+                tab === key
+                  ? "bg-card text-foreground shadow-sm ring-1 ring-foreground/10"
+                  : "text-muted-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <InfoDot title="Players">
+          Current Players are people with Kubb Platform accounts. New Players lets you add
+          someone by name and invite them to the platform.
+        </InfoDot>
       </div>
 
       {tab === "current" ? (
@@ -53,6 +60,8 @@ export function PlayersTabs({
           <p className="max-w-prose text-sm text-muted-foreground">
             Add someone by name — no account needed. They can claim the identity later
             from a single-use link, and every result recorded under it becomes theirs.
+            {" "}
+            <InfoDot term="managed-player" />
           </p>
           <ManagedPlayers players={managed} baseUrl={baseUrl} />
         </div>

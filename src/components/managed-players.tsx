@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { InfoDot } from "@/components/info-dot";
 
 function initials(name: string): string {
   return name
@@ -165,6 +166,7 @@ function PlayerCard({
           <span className="rounded-full border border-[var(--swedish-blue)]/40 bg-[var(--swedish-blue)]/10 px-2.5 py-1 font-mono text-[10px] font-bold tracking-widest text-[var(--swedish-blue)]">
             UNCLAIMED
           </span>
+          <InfoDot term="managed-player" />
         </div>
 
         <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-background p-4">
@@ -190,8 +192,12 @@ function PlayerCard({
               Copy
             </Button>
           </div>
-          <p className="eyebrow text-muted-foreground">
+          <p className="eyebrow flex items-center gap-1.5 text-muted-foreground">
             Single use · Expires in {daysLeft(player.expires_at)} days
+            <InfoDot title="Claim link">
+              The player can scan this QR code (or open the link) to create their own Kubb
+              Platform profile and connect it to this player.
+            </InfoDot>
           </p>
         </div>
 

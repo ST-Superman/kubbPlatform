@@ -130,7 +130,9 @@ export default async function DashboardPage() {
             </div>
           ) : null}
           {last5.length > 0 ? (
-            <div className="flex gap-1.5">
+            <div className="flex items-center gap-2">
+              <span className="eyebrow text-[9px] tracking-[1.2px] text-white/55">LAST 5</span>
+              <div className="flex gap-1.5">
               {last5.map((m, i) => {
                 const won = m.result === "won";
                 return (
@@ -146,6 +148,7 @@ export default async function DashboardPage() {
                   </span>
                 );
               })}
+              </div>
             </div>
           ) : null}
         </div>

@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getTeamStats } from "@/lib/supabase/teams";
 import { StatsBlock } from "@/components/stats-block";
+import { InfoDot } from "@/components/info-dot";
 
 export default async function TeamStatsPage({
   params,
@@ -36,8 +37,9 @@ export default async function TeamStatsPage({
             <div className="display text-[24px] leading-none italic tabular-nums">
               {matches_counted}
             </div>
-            <div className="eyebrow mt-1 text-[9px] tracking-[1.3px] text-muted-foreground">
-              MATCHES
+            <div className="flex items-center justify-end gap-1">
+              <span className="eyebrow text-[9px] tracking-[1.3px] text-muted-foreground">MATCHES</span>
+              <InfoDot title="Matches">The number of finished matches feeding these team stats.</InfoDot>
             </div>
           </div>
         </div>

@@ -9,6 +9,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Sheet } from "@/components/ui/sheet";
 import { LogoMark } from "@/components/brand";
+import { InfoDot } from "@/components/info-dot";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
@@ -36,7 +37,10 @@ export function HeaderNav({ authed, handle }: { authed: boolean; handle: string 
             {/* Desktop / tablet: inline nav */}
             <nav className="hidden items-center gap-2 md:flex">
               {handle ? (
-                <span className="font-mono text-xs text-muted-foreground">@{handle}</span>
+                <span className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
+                  @{handle}
+                  <InfoDot term="handle" />
+                </span>
               ) : null}
               {LINKS.map((l) => (
                 <Link
