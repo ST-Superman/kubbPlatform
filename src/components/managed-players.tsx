@@ -169,6 +169,12 @@ function PlayerCard({
           <InfoDot term="managed-player" />
         </div>
 
+        {player.fresh_link_requested_at ? (
+          <div className="rounded-lg border border-[var(--swedish-gold)]/50 bg-[var(--swedish-gold)]/12 px-3 py-2 text-[12px] font-medium text-[var(--gold-ink)]">
+            🔔 Fresh link requested — regenerate below to send a new one.
+          </div>
+        ) : null}
+
         <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-background p-4">
           {qr ? (
             // eslint-disable-next-line @next/next/no-img-element

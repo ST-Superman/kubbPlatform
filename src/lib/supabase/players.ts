@@ -6,6 +6,7 @@ export type ManagedPlayer = {
   created_at: string;
   claim_token: string;
   expires_at: string;
+  fresh_link_requested_at: string | null;
 };
 
 /**

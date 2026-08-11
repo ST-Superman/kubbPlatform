@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ClaimConfirm } from "@/components/claim-confirm";
 import { OAuthButtons } from "@/components/oauth-buttons";
 import { InfoDot } from "@/components/info-dot";
+import { RequestFreshLink } from "@/components/request-fresh-link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -99,7 +100,8 @@ export default async function ClaimPage({
               <InfoDot title="Match organizer">The match organizer is the person who sent you the invite.</InfoDot>
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col gap-3">
+            <RequestFreshLink token={token} />
             <Link href="/" className={cn(buttonVariants({ variant: "outline" }))}>
               Go to Kubb Platform
             </Link>
