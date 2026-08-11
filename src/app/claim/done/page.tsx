@@ -36,8 +36,8 @@ export default async function ClaimDonePage({
             Welcome, {firstName}
           </CardTitle>
           <CardDescription>
-            That identity is yours now — and everything you play from here
-            counts.
+            Welcome to the Kubb Platform. Feel free to organize your own
+            matches, or wait for another match invite.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">

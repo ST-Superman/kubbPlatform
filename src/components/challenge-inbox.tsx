@@ -63,7 +63,7 @@ export function ChallengeInbox({ initial }: { initial: Challenge[] }) {
                   : `Waiting on ${firstName(c.other_display_name)}`}
               </div>
               <div className="font-mono text-[10px] tracking-wider text-muted-foreground">
-                RACE TO {c.race_to}
+                RACE TO {c.race_to} · first to {c.race_to} game{c.race_to === 1 ? "" : "s"}
               </div>
             </div>
             {c.direction === "incoming" ? (

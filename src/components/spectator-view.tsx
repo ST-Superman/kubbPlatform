@@ -69,7 +69,7 @@ export function SpectatorView({
       <div className="flex items-center justify-between">
         <span className="eyebrow text-muted-foreground">SPECTATING · LIVE</span>
         <Link href="/" className="eyebrow text-muted-foreground hover:underline">
-          kubb.coach
+          Kubb Platform
         </Link>
       </div>
 

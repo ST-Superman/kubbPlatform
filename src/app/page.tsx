@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { ctaClass, LogoImage } from "@/components/brand";
 
 const FEATURES = [
   {
-    title: "Live scoring, both phones",
+    title: "Live scoring, remote matches (virtual)",
     body: "Each side scores their own turns — the round appears on your opponent's screen the moment it's submitted.",
     tint: "bg-[var(--swedish-blue)]/10 text-[var(--swedish-blue)]",
     icon: (
@@ -19,7 +20,7 @@ const FEATURES = [
   },
   {
     title: "Invite with a link",
-    body: "New opponent? Type their name, share the link — they claim their side and score their own turns.",
+    body: "New opponent? Type their name, share the link — they claim their profile and score their own turns.",
     tint: "bg-[var(--dark-forest)]/10 text-[var(--dark-forest)] dark:text-[var(--chart-3)]",
     icon: (
       <>
@@ -46,6 +47,7 @@ export default async function Home() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (user) redirect("/dashboard");
 
   return (
     <div className="mx-auto max-w-md">
@@ -66,20 +68,12 @@ export default async function Home() {
         </p>
 
         <div className="mt-[22px] flex w-full flex-col gap-2.5">
-          {user ? (
-            <Link href="/dashboard" className={ctaClass("primary")}>
-              GO TO YOUR DASHBOARD
-            </Link>
-          ) : (
-            <>
-              <Link href="/signup" className={ctaClass("primary")}>
-                CREATE AN ACCOUNT
-              </Link>
-              <Link href="/login" className={ctaClass("outline")}>
-                SIGN IN
-              </Link>
-            </>
-          )}
+          <Link href="/signup" className={ctaClass("primary")}>
+            CREATE AN ACCOUNT
+          </Link>
+          <Link href="/login" className={ctaClass("outline")}>
+            SIGN IN
+          </Link>
         </div>
       </div>
 

@@ -14,11 +14,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-const RACE_OPTIONS = [1, 2, 3, 5, 7];
+const RACE_OPTIONS = [1, 2, 3];
 
 const CREATE_ERRORS: Record<string, string> = {
   auth_required: "You must be signed in.",
-  race_to_range: "Race-to must be between 1 and 9.",
+  race_to_range: "Race to must be 1, 2, or 3.",
   opponent_required: "Pick an opponent.",
   no_player_for_account: "Your account has no player row yet.",
   opponent_not_found: "That player no longer exists.",
@@ -164,7 +164,7 @@ export function MatchesClient({
     <div className="flex flex-col gap-6">
       <Card>
         <CardContent className="flex flex-col gap-4">
-          <span className="eyebrow text-muted-foreground">New match</span>
+          <span className="eyebrow text-muted-foreground">New virtual match</span>
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="opponent">Opponent</Label>

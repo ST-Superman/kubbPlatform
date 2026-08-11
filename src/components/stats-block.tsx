@@ -91,7 +91,7 @@ export function StatsBlock({ metrics }: { metrics: SideMetrics }) {
           <Tile
             label="BASELINE ACCURACY"
             value={aAcc === null ? "—" : `${aAcc}%`}
-            sub={batonLabel(a.baseline_accuracy.batons)}
+            sub={`${batonLabel(a.baseline_accuracy.batons)} at baseline`}
           />
           {phaseTile("FIELD EFFICIENCY", a.field_efficiency, ADV_FIELD_TARGET)}
         </div>

@@ -107,7 +107,7 @@ export default async function DashboardPage() {
               {wins}–{losses}
             </div>
             <div className="eyebrow mt-1.5 text-[9.5px] tracking-[1.4px] text-white/55">
-              SEASON RECORD
+              ALL TIME RECORD
             </div>
           </div>
           <div>

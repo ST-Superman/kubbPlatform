@@ -22,6 +22,7 @@ import {
   advLineLabel,
   buildErrors,
   emptyDraft,
+  lagLabel,
   maxBaselineHits,
   turnText,
   type TurnDraft,
@@ -433,8 +434,7 @@ export function MatchClient({
         <div className="flex flex-col gap-3 px-4 pt-1 pb-2">
           <div className="eyebrow text-muted-foreground">LAG — TOSS AT THE KING</div>
           <p className="text-xs text-muted-foreground">
-            Lower is better: <code>0.1</code> touching, <code>1</code>–<code>24</code> inches,{" "}
-            <code>98</code> not close, <code>99</code> knocked the king.
+            Lower is better — how close your toss lands to the king decides who throws first. &ldquo;Touching the King&rdquo; is best; &ldquo;Not even close&rdquo; or knocking it down are worst.
           </p>
           {(["A", "B"] as const)
             .filter((side) => canAct(side))
@@ -728,7 +728,7 @@ function Panel({
       <div className="flex flex-col gap-4 p-5">
         <div className="grid grid-cols-4 gap-2">
           <StatTile label="MY BASELINE" value={s.baseline[side]} />
-          <StatTile label="TO CLEAR" value={s.field[side]} color={s.field[side] > 0 ? "var(--orange-4m)" : undefined} />
+          <StatTile label="MUST CLEAR" value={s.field[side]} color={s.field[side] > 0 ? "var(--orange-4m)" : undefined} />
           <StatTile label="KING SHOTS" value={s.king_shots[side]} />
           <StatTile label="GAMES" value={gamesWon[side]} color={SIDE_COLOR[side]} />
         </div>
@@ -736,11 +736,14 @@ function Panel({
         {status === "created" ? (
           lagLocked ? (
             <div className="rounded-2xl border border-border/60 bg-background p-4 text-sm font-medium text-[var(--dark-forest)]">
-              ✓ Locked{lagVal ? ` (${lagVal})` : ""} — waiting for the other side.
+              ✓ Locked{lagVal ? ` (${lagLabel(lagVal)})` : ""} — waiting for the other side.
             </div>
           ) : canAct ? (
             <div className="flex flex-col gap-2.5 rounded-2xl border border-border/60 bg-background p-4">
               <div className="eyebrow text-muted-foreground">LAG — TOSS AT THE KING</div>
+              <p className="text-xs text-muted-foreground">
+                Lower is better — how close your toss lands to the king decides who throws first. &ldquo;Touching the King&rdquo; is best; &ldquo;Not even close&rdquo; or knocking it down are worst.
+              </p>
               <select value={lagV} onChange={(e) => setLagV(e.target.value)} className="w-full rounded-xl border border-input bg-card px-3 py-3 text-sm">
                 {LAG_OPTIONS.map((o) => (
                   <option key={o.v} value={o.v}>
@@ -903,7 +906,7 @@ function LagRow({
   if (stored != null)
     return (
       <div className="rounded-xl border border-border/60 bg-background px-3 py-3 text-sm font-medium text-[var(--dark-forest)]">
-        ✓ {firstName(name)} locked ({stored})
+        ✓ {firstName(name)} locked ({lagLabel(stored)})
       </div>
     );
   return (
@@ -1070,7 +1073,7 @@ export function TurnLog({
   const priorGames = games.filter((g) => g.game_number < lastGameNo && g.winner);
   return (
     <div className="flex flex-col gap-2.5">
-      <span className="eyebrow text-muted-foreground">TURN LOG · APPEND-ONLY</span>
+      <span className="eyebrow text-muted-foreground">TURN LOG</span>
       {turns.length === 0 && priorGames.length === 0 ? (
         <div className="py-1.5 text-xs text-muted-foreground">No turns yet.</div>
       ) : null}

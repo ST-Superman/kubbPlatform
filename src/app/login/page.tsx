@@ -22,7 +22,7 @@ export default async function LoginPage() {
         <LogoMark size={52} className="hidden dark:grid" />
         <h1 className="display mt-3 text-[27px] italic tracking-[-0.8px]">Welcome back</h1>
         <p className="mt-1.5 text-[13.5px] text-muted-foreground">
-          Sign in to pick up your game.
+          Sign in to view your dashboard.
         </p>
       </div>
 

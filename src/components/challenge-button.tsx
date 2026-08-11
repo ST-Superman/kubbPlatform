@@ -15,7 +15,7 @@ const CREATE_ERRORS: Record<string, string> = {
   opponent_not_found: "That player no longer exists.",
   no_player_for_account: "Your account has no player row yet.",
   challenge_exists: "You already have a pending challenge with this player.",
-  race_to_range: "Pick a race between 1 and 9.",
+  race_to_range: "Pick a race to 1, 2, or 3.",
 };
 
 function friendly(message: string | undefined): string {

@@ -70,7 +70,7 @@ export default async function ClaimPage({
           </CardHeader>
           <CardContent>
             <Link href="/" className={cn(buttonVariants({ variant: "outline" }))}>
-              Go to kubb.coach
+              Go to Kubb Platform
             </Link>
           </CardContent>
         </Card>
@@ -97,7 +97,7 @@ export default async function ClaimPage({
           </CardHeader>
           <CardContent>
             <Link href="/" className={cn(buttonVariants({ variant: "outline" }))}>
-              Go to kubb.coach
+              Go to Kubb Platform
             </Link>
           </CardContent>
         </Card>
@@ -131,7 +131,7 @@ export default async function ClaimPage({
           </CardHeader>
           <CardContent>
             <Link href="/" className={cn(buttonVariants({ variant: "outline" }))}>
-              Go to kubb.coach
+              Go to Kubb Platform
             </Link>
           </CardContent>
         </Card>

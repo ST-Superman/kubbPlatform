@@ -24,7 +24,9 @@ export default async function ResetPasswordPage() {
       <Card>
         <CardHeader>
           <CardTitle className="display text-2xl">Set a new password</CardTitle>
-          <CardDescription>Choose a new password for your account.</CardDescription>
+          <CardDescription>
+            Choose a new password for your account. If you followed a reset link from your email, enter your new password below to finish.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ResetPasswordForm />

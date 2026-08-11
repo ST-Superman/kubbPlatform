@@ -51,6 +51,12 @@ export const LAG_OPTIONS: { v: string; label: string }[] = [
   { v: "99", label: "Knocked down the King" },
 ];
 
+/** Friendly label for a stored lag value (e.g. "0.1" → "Touching the King"). */
+export function lagLabel(v: string | null): string {
+  if (v == null || v === "") return "";
+  return LAG_OPTIONS.find((o) => o.v === v)?.label ?? v;
+}
+
 export const ADV_LINE_OPTIONS: { v: string; label: string }[] = [
   { v: "0.1", label: "At the King" },
   ...Array.from({ length: 12 }, (_, i) => ({
