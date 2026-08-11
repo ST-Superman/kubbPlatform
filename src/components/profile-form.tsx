@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InfoDot } from "@/components/info-dot";
+import { AvatarUpload } from "@/components/avatar-upload";
 
 export function ProfileForm({ profile }: { profile: Profile }) {
   const [state, formAction, pending] = useActionState<ProfileState, FormData>(
@@ -55,17 +56,12 @@ export function ProfileForm({ profile }: { profile: Profile }) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="avatar_url">Avatar URL</Label>
-        <Input
-          id="avatar_url"
-          name="avatar_url"
-          type="url"
-          defaultValue={profile.avatar_url ?? ""}
-          placeholder="https://…"
+        <Label>Photo</Label>
+        <AvatarUpload
+          userId={profile.id}
+          initialUrl={profile.avatar_url}
+          displayName={profile.display_name}
         />
-        <p className="text-xs text-muted-foreground">
-          Paste an image link for now — uploads come later.
-        </p>
       </div>
 
       {state?.error ? (
