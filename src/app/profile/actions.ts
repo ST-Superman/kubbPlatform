@@ -54,6 +54,13 @@ export async function updateProfile(
     return { error: error.message };
   }
 
+  // Match cards read players.display_name, not profiles — keep the linked player
+  // row in sync so renames show up in matches. (players writes go via RPC.)
+  const { error: nameError } = await supabase.rpc("set_my_display_name", {
+    p_display_name: displayName,
+  });
+  if (nameError) return { error: nameError.message };
+
   revalidatePath("/profile");
   revalidatePath("/dashboard");
   return { message: "Saved." };
