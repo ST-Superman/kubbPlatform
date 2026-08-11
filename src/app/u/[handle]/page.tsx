@@ -1,9 +1,12 @@
 import { notFound, redirect } from "next/navigation";
 
+import Link from "next/link";
+
 import { createClient } from "@/lib/supabase/server";
-import { getPlayerProfile } from "@/lib/supabase/matches";
+import { getPlayerProfile, getPlayerStats } from "@/lib/supabase/matches";
 import { MatchRow } from "@/components/match-row";
 import { ChallengeButton } from "@/components/challenge-button";
+import { StatsBlock } from "@/components/stats-block";
 
 const firstName = (n: string) => n.split(/\s+/)[0];
 
@@ -22,6 +25,7 @@ export default async function PublicProfilePage({
 
   const profile = await getPlayerProfile(handle);
   if (!profile) notFound();
+  const stats = await getPlayerStats(handle);
 
   const { player, record, matches } = profile;
   const memberSince = new Date(player.created_at).toLocaleDateString(undefined, {
@@ -111,6 +115,38 @@ export default async function PublicProfilePage({
 
       {!isSelf ? (
         <ChallengeButton playerId={player.id} label={firstName(player.display_name)} />
+      ) : null}
+
+      {/* Singles throwing stats */}
+      <div className="mt-1 flex flex-col gap-2.5 rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(19,24,43,.04),0_4px_10px_rgba(19,24,43,.04)]">
+        <span className="eyebrow text-[10px] tracking-[1.5px] text-muted-foreground">
+          SINGLES STATS
+          {stats && stats.matches_counted > 0 ? ` · BASED ON ${stats.matches_counted} MATCH${stats.matches_counted === 1 ? "" : "ES"}` : ""}
+        </span>
+        {stats && stats.matches_counted > 0 ? (
+          <StatsBlock metrics={stats.metrics} />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No completed singles matches yet — stats appear once a 1v1 match is finished.
+          </p>
+        )}
+      </div>
+
+      {/* Teams */}
+      {stats && stats.teams.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <span className="eyebrow text-[10px] tracking-[1.5px] text-muted-foreground">TEAMS</span>
+          {stats.teams.map((t) => (
+            <Link
+              key={t.id}
+              href={`/teams/${t.id}`}
+              className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 text-sm font-semibold shadow-sm transition-colors hover:bg-secondary"
+            >
+              <span className="truncate">{t.name}</span>
+              <span className="eyebrow text-[9px] text-muted-foreground">VIEW STATS →</span>
+            </Link>
+          ))}
+        </div>
       ) : null}
 
       <div className="mt-1 flex flex-col gap-2">

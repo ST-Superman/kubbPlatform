@@ -143,6 +143,58 @@ export async function getPlayerProfile(handle: string): Promise<PlayerProfile | 
   return data as PlayerProfile;
 }
 
+// ---- Throwing statistics (see supabase/migrations/*_match_stats.sql) ----
+
+/** A pooled rate returned as raw counts so the UI can show the denominator inline. */
+export type AccuracyStat = { hits: number; batons: number };
+export type PhaseStat = { felled: number; batons: number };
+
+/** Per-side throwing metrics, split by throwing line. */
+export type SideMetrics = {
+  eight_meter: {
+    baseline_accuracy: AccuracyStat;
+    field_efficiency: { early: PhaseStat; mid: PhaseStat; late: PhaseStat };
+    baseline_doubles: number;
+  };
+  advantage: {
+    baseline_accuracy: AccuracyStat;
+    field_efficiency: PhaseStat;
+    baseline_doubles: number;
+  };
+};
+
+export type MatchStats = {
+  status: MatchStatus;
+  games_won: Record<Side, number>;
+  participants: Partial<
+    Record<Side, { participant_id: string; player_id: string | null; team_id: string | null; display_name: string | null; handle: string | null }>
+  >;
+  A: SideMetrics;
+  B: SideMetrics;
+};
+
+export type PlayerStats = {
+  metrics: SideMetrics;
+  matches_counted: number;
+  teams: { id: string; name: string }[];
+};
+
+/** Per-side stats for one match (both sides), or null if the match doesn't exist. */
+export async function getMatchStats(matchId: string): Promise<MatchStats | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("match_stats", { p_match_id: matchId });
+  if (error || !data) return null;
+  return data as MatchStats;
+}
+
+/** Singles (1v1) throwing stats + team memberships for a player, or null if unknown. */
+export async function getPlayerStats(handle: string): Promise<PlayerStats | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("player_stats", { p_handle: handle });
+  if (error || !data) return null;
+  return data as PlayerStats;
+}
+
 /** Read-only match state for a spectate/play token — used by the public /watch page. */
 export async function getMatchStateByToken(token: string): Promise<MatchState | null> {
   const supabase = await createClient();

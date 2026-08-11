@@ -9,11 +9,13 @@ import {
   type GameState,
   type GameSummary,
   type MatchState,
+  type MatchStats,
   type MatchStatus,
   type Side,
   type TurnRow,
 } from "@/lib/supabase/matches";
 import { ctaClass } from "@/components/brand";
+import { StatsBlock } from "@/components/stats-block";
 import {
   ADV_LINE_OPTIONS,
   LAG_OPTIONS,
@@ -139,6 +141,21 @@ export function MatchClient({
     };
   }, [matchId, commitState]);
 
+  // Post-game throwing stats: fetched once the match is finished (both sides).
+  const [matchStats, setMatchStats] = useState<MatchStats | null>(null);
+  useEffect(() => {
+    if (state.status !== "finished") return;
+    let cancelled = false;
+    const supabase = createClient();
+    void (async () => {
+      const { data } = await supabase.rpc("match_stats", { p_match_id: matchId });
+      if (!cancelled && data) setMatchStats(data as MatchStats);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [matchId, state.status]);
+
   function rpc(fn: string, args: Record<string, unknown>, onOk?: () => void) {
     start(async () => {
       const supabase = createClient();
@@ -263,6 +280,18 @@ export function MatchClient({
                 >
                   G{g.game_number} · {g.winner ? firstName(nameOf(g.winner)).toUpperCase() : "—"}
                 </span>
+              ))}
+            </div>
+          ) : null}
+          {matchStats ? (
+            <div className="grid gap-5 border-t border-[var(--swedish-gold)]/40 pt-4 sm:grid-cols-2">
+              {(["A", "B"] as const).map((side) => (
+                <div key={side} className="flex flex-col gap-2.5">
+                  <div className="eyebrow text-[10px]" style={{ color: SIDE_COLOR[side] }}>
+                    {nameOf(side)}
+                  </div>
+                  <StatsBlock metrics={matchStats[side]} />
+                </div>
               ))}
             </div>
           ) : null}
