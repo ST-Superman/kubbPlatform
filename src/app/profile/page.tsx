@@ -56,6 +56,13 @@ export default async function ProfilePage() {
         </CardContent>
       </Card>
 
+      <Link
+        href={`/u/${profile.handle}`}
+        className="self-start text-sm font-medium text-primary underline-offset-4 hover:underline"
+      >
+        View your player card →
+      </Link>
+
       <Card>
         <CardHeader>
           <CardTitle>Edit profile</CardTitle>
