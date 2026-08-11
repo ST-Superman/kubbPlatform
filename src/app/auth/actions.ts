@@ -30,20 +30,41 @@ export async function login(
   redirect(redirectTo);
 }
 
+const HANDLE_RE = /^[a-z0-9_]{3,30}$/;
+
 export async function signup(
   _prev: AuthState,
   formData: FormData,
 ): Promise<AuthState> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const displayName = String(formData.get("display_name") ?? "").trim();
+  const handle = String(formData.get("handle") ?? "").trim().toLowerCase();
   const redirectTo = safeRedirect(formData.get("redirectTo"));
+
+  if (displayName.length === 0) return { error: "Enter a display name." };
+  if (!HANDLE_RE.test(handle)) {
+    return {
+      error:
+        "Handle must be 3–30 characters, lowercase letters, numbers, or underscores.",
+    };
+  }
 
   const origin = (await headers()).get("origin") ?? "";
   const supabase = await createClient();
+
+  // Pre-check handle availability so the signup trigger doesn't fail on a
+  // unique-violation (which would surface as an opaque error).
+  const { data: available } = await supabase.rpc("handle_available", {
+    p_handle: handle,
+  });
+  if (available === false) return { error: "That handle is already taken." };
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
+      data: { handle, display_name: displayName },
       emailRedirectTo: `${origin}/auth/confirm?next=${encodeURIComponent(redirectTo)}`,
     },
   });

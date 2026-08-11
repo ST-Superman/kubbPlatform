@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ClaimConfirm } from "@/components/claim-confirm";
 import { OAuthButtons } from "@/components/oauth-buttons";
+import { InfoDot } from "@/components/info-dot";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -65,7 +66,8 @@ export default async function ClaimPage({
             </CardTitle>
             <CardDescription>
               The link may be mistyped or has been replaced. Ask your match
-              organizer for a fresh one.
+              organizer for a fresh one.{" "}
+              <InfoDot title="Match organizer">The match organizer is the person who sent you the invite.</InfoDot>
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -92,7 +94,8 @@ export default async function ClaimPage({
             </CardTitle>
             <CardDescription>
               Claim links are single-use and expire after 30 days. Your results
-              are safe — ask the organizer for a fresh link.
+              are safe — ask the organizer for a fresh link.{" "}
+              <InfoDot title="Match organizer">The match organizer is the person who sent you the invite.</InfoDot>
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -126,7 +129,8 @@ export default async function ClaimPage({
               {name} was claimed
               {when ? ` on ${when}` : ""}
               {preview.masked_handle ? ` (@${preview.masked_handle})` : ""}. If
-              that wasn&apos;t you, ask your match organizer to review it.
+              that wasn&apos;t you, ask your match organizer to review it.{" "}
+              <InfoDot title="Match organizer">The match organizer is the person who sent you the invite.</InfoDot>
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -144,15 +148,17 @@ export default async function ClaimPage({
     <Shell>
       <Card>
         <CardHeader>
-          <span className="eyebrow text-muted-foreground">
+          <span className="flex items-center gap-1.5 eyebrow text-muted-foreground">
             CLAIM YOUR IDENTITY
+            <InfoDot title="Claim your identity">Your player profile has already been created. Confirm this is you and welcome to the Kubb Platform.</InfoDot>
           </span>
           <CardTitle className="display text-3xl">
             You played kubb as {firstName}
           </CardTitle>
           <CardDescription>
             Claim this identity to keep your results and play under your own
-            account — anywhere, on any device.
+            account — anywhere, on any device.{" "}
+            <InfoDot title="Why claim?">You may have already played a game of kubb that another user recorded. Claiming connects that result to your profile.</InfoDot>
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -169,7 +175,7 @@ export default async function ClaimPage({
                 <span className="h-px flex-1 bg-border" />
               </div>
               <Link
-                href={`/signup?redirectTo=${encodeURIComponent(claimPath)}`}
+                href={`/signup?redirectTo=${encodeURIComponent(claimPath)}&name=${encodeURIComponent(name)}`}
                 className={cn(buttonVariants({ variant: "outline" }), "w-full")}
               >
                 Claim as {firstName} with email

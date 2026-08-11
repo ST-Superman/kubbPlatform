@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { type AuthState } from "@/app/auth/actions";
 import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/input";
+import { InfoDot } from "@/components/info-dot";
 import { ctaClass } from "@/components/brand";
 
 type Props = {
@@ -28,8 +29,11 @@ export function AuthForm({ mode, action }: Props) {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo") ?? "/dashboard";
   const [email, setEmail] = useState("");
+  const [handle, setHandle] = useState("");
 
   const isLogin = mode === "login";
+  // Claim links pass ?name=<managed player> so the display name prefills.
+  const defaultName = searchParams.get("name") ?? "";
 
   async function forgotPassword() {
     if (!email.trim()) {
@@ -47,6 +51,53 @@ export function AuthForm({ mode, action }: Props) {
   return (
     <form action={formAction} className="flex flex-col gap-3.5">
       <input type="hidden" name="redirectTo" value={redirectTo} />
+
+      {!isLogin ? (
+        <>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="display_name" className="flex items-center gap-1.5">
+              <span className={LABEL}>DISPLAY NAME</span>
+              <InfoDot term="display-name" />
+            </label>
+            <Input
+              id="display_name"
+              name="display_name"
+              type="text"
+              autoComplete="name"
+              defaultValue={defaultName}
+              placeholder="How your name shows on match cards"
+              className={FIELD}
+              required
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="handle" className="flex items-center gap-1.5">
+              <span className={LABEL}>HANDLE</span>
+              <InfoDot term="handle" />
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">@</span>
+              <Input
+                id="handle"
+                name="handle"
+                type="text"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                value={handle}
+                onChange={(e) => setHandle(e.target.value.toLowerCase())}
+                placeholder="your_handle"
+                className={FIELD}
+                required
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              3–30 characters: lowercase letters, numbers, underscores.
+            </p>
+          </div>
+        </>
+      ) : null}
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="email" className={LABEL}>

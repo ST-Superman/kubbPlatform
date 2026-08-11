@@ -57,5 +57,27 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Onboarding gate: a signed-in user who hasn't set their handle/display name
+  // (OAuth signups; legacy rows are backfilled) is sent to /onboarding. Allow the
+  // onboarding page itself and the claim flow so those round-trips aren't broken.
+  if (
+    user &&
+    !isPublic &&
+    pathname !== "/onboarding" &&
+    !pathname.startsWith("/claim")
+  ) {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("onboarded_at")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (prof && !prof.onboarded_at) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
+      url.searchParams.set("next", pathname);
+      return NextResponse.redirect(url);
+    }
+  }
+
   return supabaseResponse;
 }
