@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getMyProfile } from "@/lib/supabase/profiles";
 import { getMyMatches, getMatchState, type Side } from "@/lib/supabase/matches";
+import { getMyChallenges } from "@/lib/supabase/challenges";
 import { MatchRow } from "@/components/match-row";
+import { ChallengeInbox } from "@/components/challenge-inbox";
 import { ctaClass } from "@/components/brand";
 
 const firstName = (n: string | null | undefined) => (n ?? "there").split(/\s+/)[0];
@@ -19,6 +21,7 @@ export default async function DashboardPage() {
   if (!user) redirect("/login?redirectTo=/dashboard");
 
   const [profile, matches] = await Promise.all([getMyProfile(), getMyMatches()]);
+  const challenges = await getMyChallenges();
 
   // Derive the season line from finished matches (newest-first list).
   const finished = matches.filter((m) => m.result === "won" || m.result === "lost");
@@ -150,6 +153,7 @@ export default async function DashboardPage() {
 
       {/* Body */}
       <div className="flex flex-col gap-3 px-4 py-4">
+        <ChallengeInbox initial={challenges} />
         {resume ? (
           <Link
             href={`/matches/${resume.id}`}

@@ -23,6 +23,7 @@ const CREATE_ERRORS: Record<string, string> = {
   no_player_for_account: "Your account has no player row yet.",
   opponent_not_found: "That player no longer exists.",
   cannot_play_self: "You can't play against yourself.",
+  challenge_exists: "You already have a pending challenge with this player.",
 };
 
 function friendly(message: string | undefined): string {
@@ -69,17 +70,26 @@ export function MatchesClient({
 
   function create() {
     if (!selected) return;
+    const opp = selected;
     start(async () => {
       const supabase = createClient();
-      const { data, error } = await supabase.rpc("create_match", {
+      // Managed opponent → match starts now; account opponent → pending challenge.
+      const { data, error } = await supabase.rpc("create_challenge", {
         p_race_to: raceTo,
-        p_opponent_player_id: selected.player_id,
+        p_opponent_player_id: opp.player_id,
       });
       if (error) {
         toast.error(friendly(error.message));
         return;
       }
-      goToMatch(data);
+      const res = data as { match_id?: string; challenge_id?: string } | null;
+      if (res?.match_id) {
+        goToMatch(res);
+        return;
+      }
+      setSelected(null);
+      setSheetOpen(false);
+      toast.success(`Challenge sent to ${opp.display_name.split(/\s+/)[0]}`);
     });
   }
 
@@ -196,7 +206,10 @@ export function MatchesClient({
             {selected ? (
               <p className="text-xs text-muted-foreground">
                 Playing <span className="font-medium">{selected.display_name}</span>
-                {selected.kind === "managed" ? " (managed — you'll score both sides)" : ""}.{" "}
+                {selected.kind === "managed"
+                  ? " (managed — you'll score both sides)"
+                  : " (they'll get a challenge to accept)"}
+                .{" "}
                 <button
                   type="button"
                   className="underline-offset-4 hover:underline"
@@ -235,7 +248,11 @@ export function MatchesClient({
           </div>
 
           <Button onClick={create} disabled={pending || !selected} className="w-full sm:w-fit">
-            {pending ? "Creating…" : "Create match"}
+            {pending
+              ? "Working…"
+              : selected?.kind === "account"
+                ? "Send challenge"
+                : "Create match"}
           </Button>
         </CardContent>
       </Card>
