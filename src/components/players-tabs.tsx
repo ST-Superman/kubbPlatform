@@ -48,7 +48,7 @@ export function PlayersTabs({
           ))}
         </div>
         <InfoDot title="Players">
-          Current Players are people with Kubb Platform accounts. New Players lets you add
+          Current Players are people with Kubb Portal accounts. New Players lets you add
           someone by name and invite them to the platform.
         </InfoDot>
       </div>

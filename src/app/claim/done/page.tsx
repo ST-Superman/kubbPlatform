@@ -36,7 +36,7 @@ export default async function ClaimDonePage({
             Welcome, {firstName}
           </CardTitle>
           <CardDescription>
-            Welcome to the Kubb Platform. Feel free to organize your own
+            Welcome to the Kubb Portal. Feel free to organize your own
             matches, or wait for another match invite.
           </CardDescription>
         </CardHeader>

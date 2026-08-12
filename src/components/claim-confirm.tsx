@@ -27,9 +27,9 @@ export function ClaimConfirm({
   const alreadyClaimed = code === "account_already_claimed_identity";
 
   const mergeHref = (() => {
-    const subject = "Kubb Platform — merge player identities";
+    const subject = "Kubb Portal — merge player identities";
     const body =
-      `I'd like to merge two player identities on the Kubb Platform.\n\n` +
+      `I'd like to merge two player identities on the Kubb Portal.\n\n` +
       `Player I'm trying to claim: ${displayName} (claim token: ${token})\n` +
       `My account: ${userEmail ?? "(my signed-in account)"}\n\n` +
       `Additional comments:\n`;

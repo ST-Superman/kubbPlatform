@@ -47,7 +47,7 @@ export default async function OnboardingPage({
           {isClaim ? "Confirm your profile" : "Finish your profile"}
         </h1>
         <p className="mt-1.5 text-[13.5px] text-muted-foreground">
-          Pick how your name and handle appear on the Kubb Platform.
+          Pick how your name and handle appear on the Kubb Portal.
         </p>
       </div>
 

@@ -20,7 +20,7 @@ export default async function SignupPage() {
       <div className="flex flex-col items-center text-center">
         <LogoImage size={44} className="dark:hidden" />
         <LogoMark size={52} className="hidden dark:grid" />
-        <h1 className="display mt-3 text-[27px] italic tracking-[-0.8px]">Welcome to the Kubb Platform!</h1>
+        <h1 className="display mt-3 text-[27px] italic tracking-[-0.8px]">Welcome to the Kubb Portal!</h1>
         <p className="mt-1.5 text-[13.5px] text-muted-foreground">
           Let&apos;s play some Kubb.
         </p>

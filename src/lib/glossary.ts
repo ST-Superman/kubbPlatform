@@ -6,7 +6,7 @@ export type GlossaryEntry = { label: string; body: string };
 export const GLOSSARY: Record<string, GlossaryEntry> = {
   handle: {
     label: "Handle",
-    body: "Your unique @username on the Kubb Platform. Edit it anytime in your profile.",
+    body: "Your unique @username on the Kubb Portal. Edit it anytime in your profile.",
   },
   "display-name": {
     label: "Display name",

@@ -23,7 +23,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Kubb Platform",
+  title: "Kubb Portal",
   description:
     "Competitive kubb online — matches, leagues, tournaments, profiles.",
 };

@@ -29,7 +29,7 @@ export function HeaderNav({ authed, handle }: { authed: boolean; handle: string 
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:h-16">
         <Link href="/" className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
           <LogoMark size={30} />
-          <span className="eyebrow text-foreground">KUBB PLATFORM</span>
+          <span className="eyebrow text-foreground">KUBB PORTAL</span>
         </Link>
 
         {authed ? (

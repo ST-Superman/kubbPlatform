@@ -46,7 +46,7 @@ export function LogoImage({
   return (
     <Image
       src="/logo-transparent.png"
-      alt="Kubb Platform"
+      alt="Kubb Portal"
       width={size}
       height={size}
       className={cn("object-contain", className)}

@@ -74,7 +74,7 @@ export default async function ClaimPage({
           </CardHeader>
           <CardContent>
             <Link href="/" className={cn(buttonVariants({ variant: "outline" }))}>
-              Go to Kubb Platform
+              Go to Kubb Portal
             </Link>
           </CardContent>
         </Card>
@@ -103,7 +103,7 @@ export default async function ClaimPage({
           <CardContent className="flex flex-col gap-3">
             <RequestFreshLink token={token} />
             <Link href="/" className={cn(buttonVariants({ variant: "outline" }))}>
-              Go to Kubb Platform
+              Go to Kubb Portal
             </Link>
           </CardContent>
         </Card>
@@ -138,7 +138,7 @@ export default async function ClaimPage({
           </CardHeader>
           <CardContent>
             <Link href="/" className={cn(buttonVariants({ variant: "outline" }))}>
-              Go to Kubb Platform
+              Go to Kubb Portal
             </Link>
           </CardContent>
         </Card>
@@ -153,7 +153,7 @@ export default async function ClaimPage({
         <CardHeader>
           <span className="flex items-center gap-1.5 eyebrow text-muted-foreground">
             CLAIM YOUR IDENTITY
-            <InfoDot title="Claim your identity">Your player profile has already been created. Confirm this is you and welcome to the Kubb Platform.</InfoDot>
+            <InfoDot title="Claim your identity">Your player profile has already been created. Confirm this is you and welcome to the Kubb Portal.</InfoDot>
           </span>
           <CardTitle className="display text-3xl">
             You played kubb as {firstName}
@@ -187,7 +187,7 @@ export default async function ClaimPage({
                 </div>
               ))}
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Claiming this player connects these results to your Kubb Platform profile.
+                Claiming this player connects these results to your Kubb Portal profile.
               </p>
             </div>
           ) : null}
