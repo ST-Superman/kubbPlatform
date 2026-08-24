@@ -42,3 +42,9 @@ next-env.d.ts
 
 # keep the checked-in template
 !.env.example
+
+# local editor workspace (machine-specific paths)
+*.code-workspace
+
+# design handoff material (local reference, not app source)
+/design_handoff_mobile_polish/
