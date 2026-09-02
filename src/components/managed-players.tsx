@@ -65,6 +65,25 @@ export function ManagedPlayers({
               </p>
             </div>
 
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="contact_email">
+                <span className="eyebrow text-muted-foreground">
+                  Their email (optional)
+                </span>
+              </Label>
+              <Input
+                id="contact_email"
+                name="contact_email"
+                type="email"
+                placeholder="e.g. erik@example.com"
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground">
+                If they sign up with this email, we&apos;ll offer them this
+                profile to claim automatically — no link needed.
+              </p>
+            </div>
+
             {state?.error ? (
               <p className="text-sm text-destructive" role="alert">
                 {state.error}

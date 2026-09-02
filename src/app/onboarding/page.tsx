@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { OnboardingForm } from "@/components/onboarding-form";
+import { ClaimMatchedCard } from "@/components/claim-matched-card";
 import { LogoImage, LogoMark } from "@/components/brand";
 
 function safeNext(v: string | undefined): string {
@@ -38,6 +39,16 @@ export default async function OnboardingPage({
     .slice(0, 30);
   const isClaim = next.startsWith("/claim");
 
+  // If this new account's email matches an unclaimed managed profile an organizer
+  // set up, offer a one-tap claim (skip when they're already mid-claim of a token).
+  const claimable = isClaim
+    ? null
+    : ((await supabase.rpc("my_claimable_profile")).data as {
+        player_id: string;
+        display_name: string;
+        match_count: number;
+      } | null);
+
   return (
     <div className="mx-auto flex max-w-md flex-col px-6 py-12 sm:py-16">
       <div className="flex flex-col items-center text-center">
@@ -52,6 +63,12 @@ export default async function OnboardingPage({
       </div>
 
       <div className="mt-6">
+        {claimable ? (
+          <ClaimMatchedCard
+            displayName={claimable.display_name}
+            matchCount={claimable.match_count}
+          />
+        ) : null}
         <OnboardingForm
           initialHandle={suggestedHandle}
           initialName={prof.display_name ?? ""}

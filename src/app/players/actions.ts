@@ -35,6 +35,7 @@ export async function createManagedPlayer(
   formData: FormData,
 ): Promise<PlayersState> {
   const displayName = String(formData.get("display_name") ?? "").trim();
+  const contactEmail = String(formData.get("contact_email") ?? "").trim();
   if (displayName.length === 0) {
     return { error: "Enter a name for the player." };
   }
@@ -42,6 +43,7 @@ export async function createManagedPlayer(
   const supabase = await createClient();
   const { error } = await supabase.rpc("create_managed_player", {
     p_display_name: displayName,
+    p_contact_email: contactEmail || null,
   });
 
   if (error) {
@@ -49,7 +51,11 @@ export async function createManagedPlayer(
   }
 
   revalidatePath("/players");
-  return { message: `Added ${displayName}. Share their claim link below.` };
+  return {
+    message: contactEmail
+      ? `Added ${displayName}. If they sign up with ${contactEmail} we'll offer them this profile automatically — or share the link below.`
+      : `Added ${displayName}. Share their claim link below.`,
+  };
 }
 
 export async function regenerateClaimToken(
