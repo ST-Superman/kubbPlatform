@@ -156,15 +156,20 @@ meant to be readable.)
 
 ### 7.2 Email confirmation + SMTP
 
-**Current stance (small invited group):** the spike runs with **Confirm email OFF**. That's fine
-while it's a handful of people you invite personally — RLS (§7.1) is what protects data; email
-verification mainly matters at scale. If you want light verification now, you *can* enable Confirm
-email on Supabase's **built-in mailer** (no SMTP setup) — it's rate-limited to a few emails/hour,
-acceptable for a tiny group. **Custom SMTP below is deferred until a domain is secured.**
+**Status: ✅ LIVE (2026-09-03).** Confirm email is **ON**, sent via **Resend** custom SMTP on the
+verified domain **kubbportal.com** (SPF/DKIM + a DMARC record in Vercel DNS; sender
+`noreply@kubbportal.com`). The "Confirm signup" template uses the token_hash flow pointing at
+`/auth/confirm` (step 7 below), and the flow is tested end-to-end (signup → emailed link → signed in).
+A monitored **`support@kubbportal.com`** inbox also exists — **ImprovMX** forwarding → Gmail, with
+Gmail "send as" relaying through Resend SMTP. The steps below record how it was set up.
 
-The app code already supports the confirmed-email flow either way: `auth/actions.ts signup` returns
-a "check your email" message when signup yields no session, and `auth/confirm/route.ts` verifies the
-`token_hash` and binds the session cookie to the redirect.
+**Original stance (kept for history):** the spike ran with **Confirm email OFF** — fine while it was a
+handful of personally-invited people (RLS protects data; verification matters at scale). Custom SMTP
+was deferred until a domain was secured; that domain (kubbportal.com) now exists, hence the switch above.
+
+The app code supports the confirmed-email flow: `auth/actions.ts signup` returns a "check your email"
+message when signup yields no session, and `auth/confirm/route.ts` verifies the `token_hash` and binds
+the session cookie to the redirect.
 
 #### When ready for real email — Resend + Supabase (recommended)
 
