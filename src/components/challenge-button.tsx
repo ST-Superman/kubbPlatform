@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
+import { handleMembershipError } from "@/lib/membership-error";
 import { ctaClass } from "@/components/brand";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -49,7 +50,8 @@ export function ChallengeButton({
         p_race_to: raceTo,
       });
       if (error) {
-        toast.error(friendly(error.message));
+        if (!handleMembershipError(error.message, () => router.push("/membership")))
+          toast.error(friendly(error.message));
         return;
       }
       const res = data as { match_id?: string; challenge_id?: string } | null;

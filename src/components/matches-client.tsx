@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
+import { handleMembershipError } from "@/lib/membership-error";
 import { type MatchSummary, type Opponent } from "@/lib/supabase/matches";
 import { MatchRow } from "@/components/match-row";
 import { Button } from "@/components/ui/button";
@@ -80,7 +81,8 @@ export function MatchesClient({
         p_opponent_player_id: opp.player_id,
       });
       if (error) {
-        toast.error(friendly(error.message));
+        if (!handleMembershipError(error.message, () => router.push("/membership")))
+          toast.error(friendly(error.message));
         return;
       }
       const res = data as { match_id?: string; challenge_id?: string } | null;

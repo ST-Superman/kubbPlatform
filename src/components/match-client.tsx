@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
+import { handleMembershipError } from "@/lib/membership-error";
 import {
   type GameState,
   type GameSummary,
@@ -158,12 +160,15 @@ export function MatchClient({
     };
   }, [matchId, state.status]);
 
+  const router = useRouter();
+
   function rpc(fn: string, args: Record<string, unknown>, onOk?: () => void) {
     start(async () => {
       const supabase = createClient();
       const { data, error } = await supabase.rpc(fn, args);
       if (error) {
-        toast.error(errText(error.message));
+        if (!handleMembershipError(error.message, () => router.push("/membership")))
+          toast.error(errText(error.message));
         return;
       }
       if (data) commitState(data as MatchState);
