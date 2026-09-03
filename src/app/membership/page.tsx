@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { MembershipCta } from "@/components/membership-cta";
 import { Card, CardContent } from "@/components/ui/card";
+import Link from "next/link";
 
 type MyMembership = {
   expires_at: string | null;
@@ -94,7 +95,11 @@ export default async function MembershipPage({
           />
           <p className="text-[11px] text-muted-foreground">
             Secure checkout via Stripe. Extending stacks onto any time you already
-            have.
+            have. By purchasing you agree to our{" "}
+            <Link href="/terms" className="underline underline-offset-4">
+              Terms
+            </Link>
+            .
           </p>
         </CardContent>
       </Card>

@@ -49,6 +49,8 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/auth") ||
     pathname.startsWith("/claim") ||
     pathname.startsWith("/watch") ||
+    pathname.startsWith("/privacy") ||
+    pathname.startsWith("/terms") ||
     pathname.startsWith("/error");
 
   if (!user && !isPublic) {

@@ -36,6 +36,17 @@ export default async function SignupPage() {
           </div>
           <OAuthButtons />
         </Suspense>
+        <p className="text-center text-[11px] text-muted-foreground">
+          By creating an account you agree to our{" "}
+          <Link href="/terms" className="underline underline-offset-4 hover:text-foreground">
+            Terms
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline underline-offset-4 hover:text-foreground">
+            Privacy Policy
+          </Link>
+          .
+        </p>
         <p className="text-center text-[13px] text-muted-foreground">
           Already have an account?{" "}
           <Link href="/login" className="font-semibold text-primary underline-offset-4 hover:underline">
