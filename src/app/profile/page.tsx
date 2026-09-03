@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 
 import { getMyProfile } from "@/lib/supabase/profiles";
+import { createClient } from "@/lib/supabase/server";
 import { ProfileForm } from "@/components/profile-form";
 import {
   Card,
@@ -20,6 +21,24 @@ export default async function ProfilePage() {
     year: "numeric",
     month: "long",
   });
+
+  // Membership status (my_membership returns one row; entitled reflects paid OR Beta window).
+  const supabase = await createClient();
+  const { data: memData } = await supabase.rpc("my_membership");
+  const m = (Array.isArray(memData) ? memData[0] : memData) as
+    | { expires_at: string | null; beta_free_until: string | null }
+    | undefined;
+  const fmtDate = (d: string | null | undefined) =>
+    d
+      ? new Date(d).toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : null;
+  const membershipUntil = fmtDate(m?.expires_at);
+  const betaThrough = fmtDate(m?.beta_free_until);
+  const betaOpen = !!(m?.beta_free_until && new Date(m.beta_free_until) > new Date());
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-12 sm:py-16">
@@ -62,6 +81,42 @@ export default async function ProfilePage() {
       >
         View your player card →
       </Link>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Membership</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {membershipUntil ? (
+            <div>
+              <p className="text-sm font-medium">Active until {membershipUntil}</p>
+              {betaOpen ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Beta is free for everyone right now — your paid time is banked for
+                  when it ends.
+                </p>
+              ) : null}
+            </div>
+          ) : betaOpen ? (
+            <div>
+              <p className="text-sm font-medium">Free during Beta</p>
+              {betaThrough ? (
+                <p className="mt-1 text-xs text-muted-foreground">Through {betaThrough}.</p>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-sm font-medium text-muted-foreground">
+              No active membership
+            </p>
+          )}
+          <Link
+            href="/membership"
+            className="self-start text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            {membershipUntil ? "Extend membership →" : "Get a membership →"}
+          </Link>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
