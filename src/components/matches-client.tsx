@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -93,34 +94,8 @@ export function MatchesClient({
     });
   }
 
-  // Type a new name -> create a managed placeholder + a match against them, then land
-  // in the match (where an invite link is offered). No /players detour.
-  function createAndInvite(name: string) {
-    const n = name.trim();
-    if (!n) return;
-    setOpen(false);
-    setSheetOpen(false);
-    start(async () => {
-      const supabase = createClient();
-      const { data: pd, error: pErr } = await supabase.rpc("create_managed_player", {
-        p_display_name: n,
-      });
-      const playerId = (pd as { player_id?: string } | null)?.player_id;
-      if (pErr || !playerId) {
-        toast.error(friendly(pErr?.message));
-        return;
-      }
-      const { data: md, error: mErr } = await supabase.rpc("create_match", {
-        p_race_to: raceTo,
-        p_opponent_player_id: playerId,
-      });
-      if (mErr) {
-        toast.error(friendly(mErr.message));
-        return;
-      }
-      goToMatch(md);
-    });
-  }
+  // New players are created only in the Players tab (where their email is captured for
+  // auto-claim). Here you can only pick an opponent who already exists on the roster.
 
   // Shared result rows for the desktop popover and the mobile sheet.
   const results = (
@@ -139,19 +114,16 @@ export function MatchesClient({
           </button>
         </li>
       ))}
-      {query.trim() ? (
-        <li>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => createAndInvite(query)}
-            className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm hover:bg-muted disabled:opacity-50"
+      {query.trim() && filtered.length === 0 ? (
+        <li className="px-3 py-3 text-sm text-muted-foreground">
+          No player named “{query.trim()}”.{" "}
+          <Link
+            href="/players"
+            className="font-semibold text-primary underline-offset-4 hover:underline"
           >
-            <span className="text-muted-foreground">＋</span>
-            <span>
-              Create &amp; invite “<span className="font-medium">{query.trim()}</span>”
-            </span>
-          </button>
+            Add them in the Players tab
+          </Link>{" "}
+          first — you can include their email there so they can claim their profile.
         </li>
       ) : null}
     </>
