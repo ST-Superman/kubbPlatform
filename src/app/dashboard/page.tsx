@@ -7,6 +7,7 @@ import { getMyMatches } from "@/lib/supabase/matches";
 import { getMyChallenges } from "@/lib/supabase/challenges";
 import { ChallengeNotice } from "@/components/challenge-notice";
 import { TurnSections } from "@/components/turn-sections";
+import { MatchesRealtime } from "@/components/matches-realtime";
 import { ctaClass } from "@/components/brand";
 
 const firstName = (n: string | null | undefined) => (n ?? "there").split(/\s+/)[0];
@@ -39,6 +40,10 @@ export default async function DashboardPage() {
 
   // Last five results, oldest-to-newest for left-to-right dots.
   const last5 = finished.slice(0, 5).reverse();
+
+  const activeIds = matches
+    .filter((m) => m.status === "created" || m.status === "live")
+    .map((m) => m.match_id);
 
   const coachLine =
     streak >= 2
@@ -115,6 +120,7 @@ export default async function DashboardPage() {
 
       {/* Body */}
       <div className="flex flex-col gap-3 px-4 py-4">
+        <MatchesRealtime matchIds={activeIds} />
         <ChallengeNotice initial={challenges} />
 
         <TurnSections matches={matches} />

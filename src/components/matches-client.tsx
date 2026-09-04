@@ -11,6 +11,7 @@ import { type MatchSummary, type Opponent } from "@/lib/supabase/matches";
 import { type Challenge } from "@/lib/supabase/challenges";
 import { ChallengeNotice } from "@/components/challenge-notice";
 import { TurnSections } from "@/components/turn-sections";
+import { MatchesRealtime } from "@/components/matches-realtime";
 import { MatchRow } from "@/components/match-row";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -137,9 +138,13 @@ export function MatchesClient({
   );
 
   const completed = initial.filter((m) => m.status === "finished" || m.status === "abandoned");
+  const activeIds = initial
+    .filter((m) => m.status === "created" || m.status === "live")
+    .map((m) => m.match_id);
 
   return (
     <div className="flex flex-col gap-6">
+      <MatchesRealtime matchIds={activeIds} />
       <ChallengeNotice initial={challenges} />
 
       {/* Actionable matches first — waiting on you, then waiting on them. */}
