@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import { handleMembershipError } from "@/lib/membership-error";
-import { type MatchSummary, type Opponent } from "@/lib/supabase/matches";
+import { type MatchSummary, type Opponent, type BotProfile } from "@/lib/supabase/matches";
 import { type Challenge } from "@/lib/supabase/challenges";
 import { ChallengeNotice } from "@/components/challenge-notice";
 import { TurnSections } from "@/components/turn-sections";
@@ -30,6 +30,9 @@ const CREATE_ERRORS: Record<string, string> = {
   opponent_not_found: "That player no longer exists.",
   cannot_play_self: "You can't play against yourself.",
   challenge_exists: "You already have a pending challenge with this player.",
+  unknown_bot: "That bot isn't available.",
+  bot_unavailable: "That bot isn't ready yet.",
+  clone_locked: "Finish 5 matches to unlock your Clone.",
 };
 
 function friendly(message: string | undefined): string {
@@ -41,10 +44,12 @@ export function MatchesClient({
   initial,
   opponents,
   challenges,
+  bots,
 }: {
   initial: MatchSummary[];
   opponents: Opponent[];
   challenges: Challenge[];
+  bots: BotProfile[];
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -52,7 +57,9 @@ export function MatchesClient({
   const [open, setOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [raceTo, setRaceTo] = useState(2);
+  const [botRaceTo, setBotRaceTo] = useState(2);
   const [pending, start] = useTransition();
+  const [botPending, startBot] = useTransition();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -102,6 +109,22 @@ export function MatchesClient({
     });
   }
 
+  function playBot(slug: string) {
+    startBot(async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("create_bot_match", {
+        p_bot_slug: slug,
+        p_race_to: botRaceTo,
+      });
+      if (error) {
+        if (!handleMembershipError(error.message, () => router.push("/membership")))
+          toast.error(friendly(error.message));
+        return;
+      }
+      goToMatch(data);
+    });
+  }
+
   // New players are created only in the Players tab (where their email is captured for
   // auto-claim). Here you can only pick an opponent who already exists on the roster.
 
@@ -138,6 +161,7 @@ export function MatchesClient({
   );
 
   const completed = initial.filter((m) => m.status === "finished" || m.status === "abandoned");
+  const completedCount = initial.filter((m) => m.status === "finished").length;
   const activeIds = initial
     .filter((m) => m.status === "created" || m.status === "live")
     .map((m) => m.match_id);
@@ -242,6 +266,70 @@ export function MatchesClient({
                 ? "Send challenge"
                 : "Create match"}
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Practice vs a bot */}
+      <Card>
+        <CardContent className="flex flex-col gap-4">
+          <div>
+            <span className="eyebrow text-muted-foreground">Practice vs Kubb Coach</span>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Play a bot that throws its own turns — you just score your side. Bot matches
+              count toward your record.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="bot-raceto">Race to</Label>
+            <div id="bot-raceto" className="flex gap-2">
+              {RACE_OPTIONS.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setBotRaceTo(n)}
+                  aria-pressed={botRaceTo === n}
+                  className={cn(
+                    "h-11 flex-1 rounded-xl border font-mono text-sm font-bold tabular-nums transition-colors",
+                    botRaceTo === n
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {bots.map((bot) => {
+              const name = bot.display_name.replace(/^Kubb Coach\s*-\s*/, "");
+              const locked = bot.is_clone && completedCount < 5; // Clone unlocks at 5 completed matches
+              const note = bot.is_clone
+                ? completedCount < 5
+                  ? `${completedCount}/5 matches`
+                  : "Learns from your play"
+                : "Kubb Coach";
+              return (
+                <button
+                  key={bot.slug}
+                  type="button"
+                  disabled={locked || botPending}
+                  onClick={() => playBot(bot.slug)}
+                  className={cn(
+                    "flex flex-col items-start gap-0.5 rounded-xl border p-3 text-left transition-colors",
+                    locked
+                      ? "cursor-not-allowed border-dashed bg-muted/40 text-muted-foreground"
+                      : "border-border bg-card hover:border-primary hover:bg-muted",
+                  )}
+                >
+                  <span className="font-medium">{name}</span>
+                  <span className="text-xs text-muted-foreground">{note}</span>
+                </button>
+              );
+            })}
+          </div>
         </CardContent>
       </Card>
 

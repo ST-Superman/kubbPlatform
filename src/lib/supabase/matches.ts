@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { BotStats } from "@/lib/bot-engine";
 
 export type Side = "A" | "B";
 
@@ -75,6 +76,8 @@ export type MatchSummary = {
   result: MatchResult;
   /** Whose input the match is waiting on ('you' | 'opponent'); null when finished/abandoned. */
   turn: "you" | "opponent" | null;
+  /** True when this is a match against a bot (simulated). */
+  is_simulated: boolean;
 };
 
 /** Matches the signed-in user created or plays in (newest first). */
@@ -110,6 +113,63 @@ export async function getOpponents(): Promise<Opponent[]> {
   return data as Opponent[];
 }
 
+/** A bot opponent the user can practice against (bot_profiles seed). */
+export type BotProfile = {
+  slug: string;
+  display_name: string;
+  is_clone: boolean;
+  sort_order: number;
+};
+
+/** The seeded bots, in picker order. bot_profiles has an authenticated read policy. */
+export async function getBotProfiles(): Promise<BotProfile[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("bot_profiles")
+    .select("slug, display_name, is_clone, sort_order")
+    .order("sort_order");
+  if (error || !data) return [];
+  return data as BotProfile[];
+}
+
+/** For a simulated match: which side is the bot + its stat block. null for a human match. */
+export type BotMatchContext = {
+  bot_side: Side;
+  slug: string;
+  display_name: string;
+  stats: BotStats;
+};
+
+export async function getBotMatchContext(matchId: string): Promise<BotMatchContext | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("bot_match_context", { p_match_id: matchId });
+  if (error || !data) return null;
+  const d = data as {
+    bot_side: Side;
+    slug: string;
+    display_name: string;
+    acc_8m: number;
+    king_acc: number;
+    field_eff_early: number;
+    field_eff_mid: number;
+    field_eff_late: number;
+    consistency: number;
+  };
+  return {
+    bot_side: d.bot_side,
+    slug: d.slug,
+    display_name: d.display_name,
+    stats: {
+      acc_8m: d.acc_8m,
+      king_acc: d.king_acc,
+      field_eff_early: d.field_eff_early,
+      field_eff_mid: d.field_eff_mid,
+      field_eff_late: d.field_eff_late,
+      consistency: d.consistency,
+    },
+  };
+}
+
 export type ProfileMatch = {
   match_id: string;
   status: MatchStatus;
@@ -120,6 +180,7 @@ export type ProfileMatch = {
   opponent_handle: string | null;
   games_won: Record<Side, number>;
   result: MatchResult;
+  is_simulated: boolean;
 };
 
 export type PlayerProfile = {
@@ -150,6 +211,10 @@ export async function getPlayerProfile(handle: string): Promise<PlayerProfile | 
 /** A pooled rate returned as raw counts so the UI can show the denominator inline. */
 export type AccuracyStat = { hits: number; batons: number };
 export type PhaseStat = { felled: number; batons: number };
+/** King finishing accuracy, per shot (shots > 0 => legal attacks only). */
+export type KingStat = { hits: number; shots: number };
+/** Per-turn 8m field-efficiency dispersion for one phase; mean/stddev null when turns = 0. */
+export type PhaseDispersion = { turns: number; mean: number | null; stddev: number | null };
 
 /** Per-side throwing metrics, split by throwing line. */
 export type SideMetrics = {
@@ -163,6 +228,8 @@ export type SideMetrics = {
     field_efficiency: PhaseStat;
     baseline_doubles: number;
   };
+  king: KingStat;
+  field_consistency: { early: PhaseDispersion; mid: PhaseDispersion; late: PhaseDispersion };
 };
 
 export type MatchStats = {

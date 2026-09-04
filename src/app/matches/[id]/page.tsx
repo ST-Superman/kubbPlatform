@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
-import { getMatchState } from "@/lib/supabase/matches";
+import { getMatchState, getBotMatchContext } from "@/lib/supabase/matches";
 import { MatchClient } from "@/components/match-client";
 
 export default async function MatchPage({
@@ -17,12 +17,12 @@ export default async function MatchPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/login?redirectTo=/matches/${id}`);
 
-  const state = await getMatchState(id);
+  const [state, botCtx] = await Promise.all([getMatchState(id), getBotMatchContext(id)]);
   if (!state) notFound();
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-12">
-      <MatchClient matchId={id} initial={state} myUserId={user.id} />
+      <MatchClient matchId={id} initial={state} myUserId={user.id} botCtx={botCtx} />
     </div>
   );
 }

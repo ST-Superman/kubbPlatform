@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { handleMembershipError } from "@/lib/membership-error";
 import {
+  type BotMatchContext,
   type GameState,
   type GameSummary,
   type MatchState,
@@ -29,6 +30,7 @@ import {
   turnText,
   type TurnDraft,
 } from "@/lib/kubb-rules";
+import { generateBotTurn } from "@/lib/bot-engine";
 import { Sheet } from "@/components/ui/sheet";
 import { MatchInvite } from "@/components/match-invite";
 import { MatchActions } from "@/components/match-actions";
@@ -84,6 +86,25 @@ const errText = (m: string | undefined) => {
   return (code && TURN_ERRORS[code]) || m || "Something went wrong.";
 };
 
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** Short human summary of a bot's just-played turn, for the reveal banner. */
+function botTurnSummary(d: TurnDraft): string {
+  if (d.field_kubbs_left > 0)
+    return `left ${d.field_kubbs_left} field kubb${d.field_kubbs_left > 1 ? "s" : ""} standing — advantage line ${advLineLabel(d.advantage_line)}`;
+  const parts: string[] = [];
+  if (d.batons_field > 0)
+    parts.push(`cleared the field (${d.batons_field} baton${d.batons_field > 1 ? "s" : ""})`);
+  if (d.batons_baseline > 0) parts.push(`${d.baseline_kubbs}/${d.batons_baseline} at the baseline`);
+  if (d.king_shots > 0)
+    parts.push(
+      d.king_hit
+        ? "KING DOWN — game over"
+        : `${d.king_shots} king shot${d.king_shots > 1 ? "s" : ""}, missed`,
+    );
+  return parts.length ? parts.join(" · ") : "no scoring throws";
+}
+
 const NEUTRAL: GameState = {
   baseline: { A: 5, B: 5 },
   field: { A: 0, B: 0 },
@@ -101,15 +122,21 @@ export function MatchClient({
   matchId,
   initial,
   myUserId,
+  botCtx,
 }: {
   matchId: string;
   initial: MatchState;
   myUserId: string;
+  botCtx: BotMatchContext | null;
 }) {
   const [state, setState] = useState<MatchState>(initial);
   const [pending, start] = useTransition();
   const [confirmSeq, setConfirmSeq] = useState<number | null>(null);
   const [sheet, setSheet] = useState<SheetName>(null);
+  const [botThrowing, setBotThrowing] = useState<{ name: string; summary: string | null } | null>(
+    null,
+  );
+  const botTurnKeyRef = useRef<string>("");
 
   // Game-won interstitial: fire once each time another game gains a winner.
   // Detected as new state arrives (realtime refetch or an RPC result) rather than
@@ -160,6 +187,54 @@ export function MatchClient({
     };
   }, [matchId, state.status]);
 
+  // Auto-play the bot's turn in a simulated match: generate a legal turn, reveal it, submit.
+  // Keyed by (game_id:seq) so it fires exactly once per bot turn even as state re-commits
+  // (our own submit + the realtime broadcast both re-run this effect).
+  useEffect(() => {
+    if (!botCtx || state.status !== "live") return;
+    const gs = state.current_state;
+    const gameId = state.current_game_id;
+    const seq = state.next_seq;
+    if (!gs || !gameId || seq == null || gs.winner) return;
+    if (gs.next_side !== botCtx.bot_side) return;
+    const key = `${gameId}:${seq}`;
+    if (botTurnKeyRef.current === key) return;
+    botTurnKeyRef.current = key;
+
+    const draft = generateBotTurn(botCtx.stats, gs, botCtx.bot_side);
+    void (async () => {
+      setBotThrowing({ name: botCtx.display_name, summary: null });
+      await sleep(900);
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("submit_turn", {
+        p_turn_id: crypto.randomUUID(),
+        p_game_id: gameId,
+        p_token: null,
+        p_expected_seq: seq,
+        p_batons_field: draft.batons_field,
+        p_batons_baseline: draft.batons_baseline,
+        p_baseline_kubbs: draft.baseline_kubbs,
+        p_base_kubb_double: draft.base_kubb_double,
+        p_penalty_kubbs: draft.penalty_kubbs,
+        p_field_kubbs_left: draft.field_kubbs_left,
+        p_advantage_line: draft.field_kubbs_left > 0 ? draft.advantage_line : null,
+        p_king_shots: draft.king_shots,
+        p_king_hit: draft.king_hit,
+        p_king_hit_early: draft.king_hit_early,
+      });
+      if (error) {
+        setBotThrowing(null);
+        const code = error.message?.match(/[a-z_]+/)?.[0];
+        if (code !== "already_scored") toast.error(errText(error.message));
+        return;
+      }
+      if (data) commitState(data as MatchState);
+      setBotThrowing({ name: botCtx.display_name, summary: botTurnSummary(draft) });
+      await sleep(1600);
+      setBotThrowing(null);
+    })();
+  }, [state, botCtx, commitState]);
+
   const router = useRouter();
 
   function rpc(fn: string, args: Record<string, unknown>, onOk?: () => void) {
@@ -188,6 +263,7 @@ export function MatchClient({
   // (no user_id). A real opponent enters their own lag/turns. Server enforces the
   // exact rule (can_act); this just gates the UI.
   const canAct = (side: Side) => {
+    if (botCtx && side === botCtx.bot_side) return false; // the bot's turns are auto-played
     const uid = parts[side]?.user_id;
     return uid === myUserId || uid == null;
   };
@@ -252,6 +328,7 @@ export function MatchClient({
         <div className="text-right">
           <div className="eyebrow text-muted-foreground">
             RACE TO {state.race_to} · {statusEyebrow}
+            {botCtx ? " · SIM" : ""}
           </div>
           <div className="display text-3xl sm:text-4xl">
             {gamesWon.A} – {gamesWon.B}
@@ -486,6 +563,16 @@ export function MatchClient({
             setSheet("log");
           }}
         />
+      ) : null}
+
+      {botThrowing ? (
+        <div className="pointer-events-none fixed inset-x-0 top-4 z-40 flex justify-center px-4">
+          <div className="pointer-events-auto flex max-w-[92vw] items-center gap-2.5 rounded-full border border-border bg-card/95 px-4 py-2.5 text-sm shadow-lg backdrop-blur animate-in fade-in slide-in-from-top-2 duration-200">
+            <span aria-hidden>🤖</span>
+            <span className="font-semibold">{botThrowing.name}</span>
+            <span className="text-muted-foreground">{botThrowing.summary ?? "is throwing…"}</span>
+          </div>
+        </div>
       ) : null}
     </div>
   );

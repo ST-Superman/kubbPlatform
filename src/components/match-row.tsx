@@ -12,6 +12,7 @@ export type MatchRowData = {
   games_won: Record<Side, number>;
   result: MatchResult;
   created_at: string;
+  is_simulated?: boolean;
 };
 
 export const ROW_CLASS =
@@ -48,6 +49,11 @@ export function MatchRowContent({ row }: { row: MatchRowData }) {
       <span className={cn("shrink-0 rounded-full border px-2 py-1 font-mono text-[9px] font-bold tracking-widest", b.cls)}>
         {b.label}
       </span>
+      {row.is_simulated ? (
+        <span className="shrink-0 rounded-full border border-border bg-muted px-2 py-1 font-mono text-[9px] font-bold tracking-widest text-muted-foreground">
+          SIM
+        </span>
+      ) : null}
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium">vs {row.opponent ?? "—"}</div>
         <div className="font-mono text-[10px] text-muted-foreground">{date}</div>

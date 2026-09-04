@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
-import { getMyMatches, getOpponents } from "@/lib/supabase/matches";
+import { getMyMatches, getOpponents, getBotProfiles } from "@/lib/supabase/matches";
 import { getMyChallenges } from "@/lib/supabase/challenges";
 import { MatchesClient } from "@/components/matches-client";
 
@@ -12,10 +12,11 @@ export default async function MatchesPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?redirectTo=/matches");
 
-  const [matches, opponents, challenges] = await Promise.all([
+  const [matches, opponents, challenges, bots] = await Promise.all([
     getMyMatches(),
     getOpponents(),
     getMyChallenges(),
+    getBotProfiles(),
   ]);
 
   return (
@@ -28,7 +29,7 @@ export default async function MatchesPage() {
           turns live, from two devices.
         </p>
       </div>
-      <MatchesClient initial={matches} opponents={opponents} challenges={challenges} />
+      <MatchesClient initial={matches} opponents={opponents} challenges={challenges} bots={bots} />
     </div>
   );
 }
