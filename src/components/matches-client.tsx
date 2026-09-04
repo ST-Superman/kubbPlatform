@@ -22,6 +22,8 @@ import { cn } from "@/lib/utils";
 
 const RACE_OPTIONS = [1, 2, 3];
 
+type MatchTab = "current" | "new" | "history";
+
 const CREATE_ERRORS: Record<string, string> = {
   auth_required: "You must be signed in.",
   race_to_range: "Race to must be 1, 2, or 3.",
@@ -58,6 +60,7 @@ export function MatchesClient({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [raceTo, setRaceTo] = useState(2);
   const [botRaceTo, setBotRaceTo] = useState(2);
+  const [tab, setTab] = useState<MatchTab>("current");
   const [pending, start] = useTransition();
   const [botPending, startBot] = useTransition();
 
@@ -171,9 +174,55 @@ export function MatchesClient({
       <MatchesRealtime matchIds={activeIds} />
       <ChallengeNotice initial={challenges} />
 
-      {/* Actionable matches first — waiting on you, then waiting on them. */}
-      <TurnSections matches={initial} />
+      {/* Tabs: current matches · new match · history */}
+      <div className="flex gap-1 rounded-full border border-border bg-muted/40 p-1">
+        {(
+          [
+            ["current", "Current", activeIds.length],
+            ["new", "New", 0],
+            ["history", "History", completed.length],
+          ] as [MatchTab, string, number][]
+        ).map(([key, label, count]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setTab(key)}
+            aria-pressed={tab === key}
+            className={cn(
+              "h-9 flex-1 rounded-full font-mono text-[11px] font-bold uppercase tracking-[1.2px] transition-colors",
+              tab === key
+                ? "bg-card text-foreground shadow-sm ring-1 ring-foreground/10"
+                : "text-muted-foreground",
+            )}
+          >
+            {label}
+            {count > 0 ? <span className="ml-1 opacity-60">{count}</span> : null}
+          </button>
+        ))}
+      </div>
 
+      {/* 1 · Current: your turn, then waiting for opponent */}
+      {tab === "current" ? (
+        activeIds.length > 0 ? (
+          <TurnSections matches={initial} />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No matches in progress.{" "}
+            <button
+              type="button"
+              onClick={() => setTab("new")}
+              className="font-semibold text-primary underline-offset-4 hover:underline"
+            >
+              Start a new match
+            </button>
+            .
+          </p>
+        )
+      ) : null}
+
+      {/* 2 · New match — virtual match + practice vs a bot */}
+      {tab === "new" ? (
+        <>
       <Card>
         <CardContent className="flex flex-col gap-4">
           <span className="eyebrow text-muted-foreground">New virtual match</span>
@@ -332,6 +381,8 @@ export function MatchesClient({
           </div>
         </CardContent>
       </Card>
+        </>
+      ) : null}
 
       {/* Mobile opponent sheet */}
       <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="Pick opponent">
@@ -349,17 +400,17 @@ export function MatchesClient({
         </div>
       </Sheet>
 
-      {completed.length > 0 ? (
-        <div className="flex flex-col gap-2">
-          <span className="eyebrow text-[10px] tracking-[1.5px] text-muted-foreground">
-            COMPLETED:
-          </span>
-          {completed.map((m) => (
-            <MatchRow key={m.match_id} row={m} />
-          ))}
-        </div>
-      ) : initial.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No matches yet.</p>
+      {/* 3 · Match history */}
+      {tab === "history" ? (
+        completed.length > 0 ? (
+          <div className="flex flex-col gap-2">
+            {completed.map((m) => (
+              <MatchRow key={m.match_id} row={m} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No completed matches yet.</p>
+        )
       ) : null}
     </div>
   );
