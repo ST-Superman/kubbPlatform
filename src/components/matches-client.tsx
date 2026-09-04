@@ -8,6 +8,9 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { handleMembershipError } from "@/lib/membership-error";
 import { type MatchSummary, type Opponent } from "@/lib/supabase/matches";
+import { type Challenge } from "@/lib/supabase/challenges";
+import { ChallengeNotice } from "@/components/challenge-notice";
+import { TurnSections } from "@/components/turn-sections";
 import { MatchRow } from "@/components/match-row";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,9 +39,11 @@ function friendly(message: string | undefined): string {
 export function MatchesClient({
   initial,
   opponents,
+  challenges,
 }: {
   initial: MatchSummary[];
   opponents: Opponent[];
+  challenges: Challenge[];
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -131,11 +136,15 @@ export function MatchesClient({
     </>
   );
 
-  const inProgress = initial.filter((m) => m.status === "created" || m.status === "live");
   const completed = initial.filter((m) => m.status === "finished" || m.status === "abandoned");
 
   return (
     <div className="flex flex-col gap-6">
+      <ChallengeNotice initial={challenges} />
+
+      {/* Actionable matches first — waiting on you, then waiting on them. */}
+      <TurnSections matches={initial} />
+
       <Card>
         <CardContent className="flex flex-col gap-4">
           <span className="eyebrow text-muted-foreground">New virtual match</span>
@@ -247,28 +256,18 @@ export function MatchesClient({
         </div>
       </Sheet>
 
-      {initial.length === 0 ? (
+      {completed.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <span className="eyebrow text-[10px] tracking-[1.5px] text-muted-foreground">
+            COMPLETED:
+          </span>
+          {completed.map((m) => (
+            <MatchRow key={m.match_id} row={m} />
+          ))}
+        </div>
+      ) : initial.length === 0 ? (
         <p className="text-sm text-muted-foreground">No matches yet.</p>
-      ) : (
-        <>
-          {inProgress.length > 0 ? (
-            <div className="flex flex-col gap-2">
-              <span className="eyebrow text-muted-foreground">In progress</span>
-              {inProgress.map((m) => (
-                <MatchRow key={m.match_id} row={m} />
-              ))}
-            </div>
-          ) : null}
-          {completed.length > 0 ? (
-            <div className="flex flex-col gap-2">
-              <span className="eyebrow text-muted-foreground">Completed</span>
-              {completed.map((m) => (
-                <MatchRow key={m.match_id} row={m} />
-              ))}
-            </div>
-          ) : null}
-        </>
-      )}
+      ) : null}
     </div>
   );
 }

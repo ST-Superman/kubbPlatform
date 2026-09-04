@@ -73,6 +73,8 @@ export type MatchSummary = {
   opponent_handle: string | null;
   games_won: Record<Side, number>;
   result: MatchResult;
+  /** Whose input the match is waiting on ('you' | 'opponent'); null when finished/abandoned. */
+  turn: "you" | "opponent" | null;
 };
 
 /** Matches the signed-in user created or plays in (newest first). */

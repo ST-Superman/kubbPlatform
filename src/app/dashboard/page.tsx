@@ -3,10 +3,10 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { getMyProfile } from "@/lib/supabase/profiles";
-import { getMyMatches, getMatchState, type Side } from "@/lib/supabase/matches";
+import { getMyMatches } from "@/lib/supabase/matches";
 import { getMyChallenges } from "@/lib/supabase/challenges";
-import { MatchRow } from "@/components/match-row";
-import { ChallengeInbox } from "@/components/challenge-inbox";
+import { ChallengeNotice } from "@/components/challenge-notice";
+import { TurnSections } from "@/components/turn-sections";
 import { ctaClass } from "@/components/brand";
 
 const firstName = (n: string | null | undefined) => (n ?? "there").split(/\s+/)[0];
@@ -39,47 +39,6 @@ export default async function DashboardPage() {
 
   // Last five results, oldest-to-newest for left-to-right dots.
   const last5 = finished.slice(0, 5).reverse();
-
-  const recent = matches.slice(0, 3);
-
-  // Resume card: the one open match, with live details fetched once.
-  const openMatch = matches.find((m) => m.status === "live" || m.status === "created");
-  const liveState = openMatch ? await getMatchState(openMatch.match_id) : null;
-
-  let resume: {
-    id: string;
-    eyebrow: string;
-    opponent: string;
-    mine: number;
-    theirs: number;
-  } | null = null;
-  if (openMatch && liveState) {
-    const parts = liveState.participants ?? {};
-    const mySide: Side | null =
-      (["A", "B"] as const).find((sd) => parts[sd]?.user_id === user.id) ?? null;
-    const other: Side = mySide === "A" ? "B" : "A";
-    const gw = liveState.games_won ?? { A: 0, B: 0 };
-    const gameNo = Math.max(liveState.games?.length ?? 0, 1);
-    const statusWord = liveState.status === "live" ? "LIVE NOW" : "LAG PHASE";
-    let turn = "IN PROGRESS";
-    if (liveState.status === "live" && liveState.current_state) {
-      const next = liveState.current_state.next_side;
-      turn =
-        next && mySide && next === mySide
-          ? "YOU'RE UP"
-          : `${firstName(openMatch.opponent).toUpperCase()}'S TURN`;
-    } else if (liveState.status === "created") {
-      const myLag = mySide === "A" ? liveState.lag?.a : liveState.lag?.b;
-      turn = mySide == null || myLag == null ? "YOUR LAG" : "WAITING ON LAG";
-    }
-    resume = {
-      id: openMatch.match_id,
-      eyebrow: `${statusWord} · GAME ${gameNo} · ${turn}`,
-      opponent: openMatch.opponent ?? "your opponent",
-      mine: mySide ? gw[mySide] : gw.A,
-      theirs: mySide ? gw[other] : gw.B,
-    };
-  }
 
   const coachLine =
     streak >= 2
@@ -156,51 +115,13 @@ export default async function DashboardPage() {
 
       {/* Body */}
       <div className="flex flex-col gap-3 px-4 py-4">
-        <ChallengeInbox initial={challenges} />
-        {resume ? (
-          <Link
-            href={`/matches/${resume.id}`}
-            className="flex items-center gap-3 rounded-2xl border-[1.5px] border-[var(--swedish-gold)]/55 bg-[var(--swedish-gold)]/10 px-4 py-3.5 transition-transform active:scale-[0.97]"
-          >
-            <div className="min-w-0 flex-1">
-              <div className="font-mono text-[9px] font-bold tracking-[1.3px] text-[var(--gold-ink)]">
-                {resume.eyebrow}
-              </div>
-              <div className="mt-0.5 text-[14px] font-semibold">You vs {resume.opponent}</div>
-            </div>
-            <div className="display text-[22px] italic tracking-[-0.5px] tabular-nums">
-              {resume.mine}–{resume.theirs}
-            </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold-ink)" strokeWidth="2.4">
-              <path d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
-        ) : null}
+        <ChallengeNotice initial={challenges} />
+
+        <TurnSections matches={matches} />
 
         <Link href="/matches" className={ctaClass("primary")}>
           NEW MATCH
         </Link>
-
-        <div className="mt-1 flex items-baseline justify-between">
-          <span className="eyebrow text-[10px] tracking-[1.5px] text-muted-foreground">
-            RECENT MATCHES
-          </span>
-          <Link href="/matches" className="text-[12px] font-semibold text-primary">
-            All matches →
-          </Link>
-        </div>
-
-        {recent.length > 0 ? (
-          <div className="flex flex-col gap-2">
-            {recent.map((m) => (
-              <MatchRow key={m.match_id} row={m} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            No matches yet — tap New match to play your first.
-          </p>
-        )}
 
         <p className="px-0.5 pt-1.5 pb-1 text-[12px] italic text-muted-foreground">{coachLine}</p>
       </div>
