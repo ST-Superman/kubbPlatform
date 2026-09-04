@@ -45,25 +45,34 @@ export default async function DashboardPage() {
     .filter((m) => m.status === "created" || m.status === "live")
     .map((m) => m.match_id);
 
-  const coachLine =
-    streak >= 2
-      ? `${streak} straight — keep the momentum going.`
-      : played === 0
-        ? "Your first match is one tap away."
-        : finished[0]?.result === "won"
-          ? "Nice win — line up the next one."
-          : "New match, fresh start.";
-
   return (
     <div className="mx-auto max-w-2xl">
       {/* Navy scoreboard hero (theme-invariant hex) */}
       <div className="flex flex-col gap-3.5 bg-[#0D1726] px-5 pt-[22px] pb-5 dark:border-b dark:border-white/[0.08]">
-        <div className="eyebrow tracking-[1.6px] text-[var(--swedish-gold)]">
-          YOUR GAME{profile ? ` · @${profile.handle}` : ""}
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="eyebrow tracking-[1.6px] text-[var(--swedish-gold)]">
+              YOUR GAME{profile ? ` · @${profile.handle}` : ""}
+            </div>
+            <h1 className="display mt-2 text-[27px] leading-[1.1] italic tracking-[-0.8px] text-white">
+              Welcome back, {firstName(profile?.display_name)}
+            </h1>
+          </div>
+          {profile ? (
+            <Link
+              href={`/u/${profile.handle}`}
+              aria-label="View your player card"
+              className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-[#D5C8B5] font-mono text-2xl font-bold text-[#13254A] ring-2 ring-white/15 transition-transform active:scale-95"
+            >
+              {profile.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                profile.display_name.charAt(0).toUpperCase()
+              )}
+            </Link>
+          ) : null}
         </div>
-        <h1 className="display text-[27px] leading-[1.1] italic tracking-[-0.8px] text-white">
-          Welcome back, {firstName(profile?.display_name)}
-        </h1>
 
         <div className="flex items-end gap-6">
           <div>
@@ -128,8 +137,6 @@ export default async function DashboardPage() {
         <Link href="/matches" className={ctaClass("primary")}>
           NEW MATCH
         </Link>
-
-        <p className="px-0.5 pt-1.5 pb-1 text-[12px] italic text-muted-foreground">{coachLine}</p>
       </div>
     </div>
   );
