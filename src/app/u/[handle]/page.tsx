@@ -12,6 +12,10 @@ import { ctaClass } from "@/components/brand";
 
 const firstName = (n: string) => n.split(/\s+/)[0];
 
+// Opponents excluded from the visible match history (mirrors the Stats section's
+// test-player exclusion). These are managed test accounts, not real players.
+const TEST_OPPONENTS = new Set(["Test User 1", "Test User 2"]);
+
 export default async function PublicProfilePage({
   params,
 }: {
@@ -42,6 +46,12 @@ export default async function PublicProfilePage({
     .slice(0, 5)
     .reverse();
   const isSelf = player.user_id === user.id;
+
+  // Match History shows only completed matches (a decided result), excluding the
+  // managed test accounts — same exclusion the Stats section applies.
+  const historyMatches = matches.filter(
+    (m) => m.result !== null && !TEST_OPPONENTS.has(m.opponent ?? ""),
+  );
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-3 px-4 py-6">
@@ -174,12 +184,12 @@ export default async function PublicProfilePage({
 
       <div className="mt-1 flex flex-col gap-2">
         <span className="eyebrow text-[10px] tracking-[1.5px] text-muted-foreground">
-          MATCH HISTORY{played > 0 ? ` · ${played} PLAYED` : ""}
+          MATCH HISTORY{historyMatches.length > 0 ? ` · ${historyMatches.length} PLAYED` : ""}
         </span>
-        {matches.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No matches yet.</p>
+        {historyMatches.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No completed matches yet.</p>
         ) : (
-          <MatchHistory matches={matches} isSelf={isSelf} />
+          <MatchHistory matches={historyMatches} isSelf={isSelf} />
         )}
       </div>
     </div>
