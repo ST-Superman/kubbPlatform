@@ -412,3 +412,9 @@ enabled = true
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# notify-challenge is invoked by the on_challenge_created DB trigger (pg_net), not by a
+# signed-in user, so it must not require a Supabase JWT. It authenticates the caller with
+# a shared secret (NOTIFY_SECRET) in the Authorization header instead.
+[functions.notify-challenge]
+verify_jwt = false
