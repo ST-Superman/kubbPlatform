@@ -133,6 +133,13 @@ export default async function ProfilePage() {
       >
         Change password →
       </Link>
+
+      <Link
+        href="/settings/notifications"
+        className="self-start text-sm font-medium text-primary underline-offset-4 hover:underline"
+      >
+        Notification settings →
+      </Link>
     </div>
   );
 }

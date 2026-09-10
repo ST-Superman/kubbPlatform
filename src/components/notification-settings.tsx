@@ -39,7 +39,8 @@ export function NotificationSettings({
       <div className="min-w-0">
         <div className="text-sm font-semibold">Challenge emails</div>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          An email when another player challenges you to a match.
+          When a player challenges you, and when a challenge you send is accepted
+          or declined.
         </p>
       </div>
       <button
