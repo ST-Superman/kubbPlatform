@@ -1090,7 +1090,7 @@ function TurnFormBody({
 
       <Stepper
         label="BATONS AT BASELINE"
-        sub={s.advantage[side] != null ? `from your advantage line — ${advLineLabel(s.advantage[side])}` : "from the 8 meter line"}
+        sub={`${s.baseline[opp(side)]} baseline kubb${s.baseline[opp(side)] === 1 ? "" : "s"} standing · ${s.advantage[side] != null ? `from your advantage line — ${advLineLabel(s.advantage[side])}` : "from the 8 meter line"}`}
         value={d.batons_baseline}
         max={6}
         onChange={(v) => set({ batons_baseline: v })}
