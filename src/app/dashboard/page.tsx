@@ -5,7 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getMyProfile } from "@/lib/supabase/profiles";
 import { getMyMatches } from "@/lib/supabase/matches";
 import { getMyChallenges } from "@/lib/supabase/challenges";
+import { getAnnouncements } from "@/lib/supabase/messages";
 import { ChallengeNotice } from "@/components/challenge-notice";
+import { AnnouncementBanner } from "@/components/announcement-banner";
 import { TurnSections } from "@/components/turn-sections";
 import { MatchesRealtime } from "@/components/matches-realtime";
 import { ctaClass } from "@/components/brand";
@@ -23,6 +25,8 @@ export default async function DashboardPage() {
 
   const [profile, matches] = await Promise.all([getMyProfile(), getMyMatches()]);
   const challenges = await getMyChallenges();
+  const announcements = await getAnnouncements();
+  const topAnnouncement = announcements.find((a) => !a.read) ?? null;
 
   // Derive the season line from finished matches (newest-first list).
   const finished = matches.filter((m) => m.result === "won" || m.result === "lost");
@@ -130,6 +134,7 @@ export default async function DashboardPage() {
       {/* Body */}
       <div className="flex flex-col gap-3 px-4 py-4">
         <MatchesRealtime matchIds={activeIds} />
+        {topAnnouncement ? <AnnouncementBanner announcement={topAnnouncement} /> : null}
         <ChallengeNotice initial={challenges} />
 
         <TurnSections matches={matches} />

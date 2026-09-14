@@ -34,6 +34,7 @@ import { generateBotTurn } from "@/lib/bot-engine";
 import { Sheet } from "@/components/ui/sheet";
 import { MatchInvite } from "@/components/match-invite";
 import { MatchActions } from "@/components/match-actions";
+import { MatchChatPanel } from "@/components/match-chat-panel";
 import { InfoDot } from "@/components/info-dot";
 import { cn } from "@/lib/utils";
 
@@ -116,7 +117,7 @@ const NEUTRAL: GameState = {
   round_cap: 2,
 };
 
-type SheetName = "turn" | "lag" | "log" | null;
+type SheetName = "turn" | "lag" | "log" | "chat" | null;
 
 export function MatchClient({
   matchId,
@@ -394,6 +395,18 @@ export function MatchClient({
       <div className="flex flex-wrap items-center gap-2">
         <MatchInvite matchId={matchId} participants={parts} myUserId={myUserId} />
         <MatchActions matchId={matchId} state={state} myUserId={myUserId} onState={setState} />
+        {!botCtx && parts.A?.user_id && parts.B?.user_id ? (
+          <button
+            type="button"
+            onClick={() => setSheet("chat")}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            Chat
+          </button>
+        ) : null}
       </div>
 
       {/* ===== Desktop: three columns ===== */}
@@ -546,6 +559,11 @@ export function MatchClient({
             onRewind={rewind}
           />
         </div>
+      </Sheet>
+
+      <Sheet open={sheet === "chat"} onClose={() => setSheet(null)} title="Match chat">
+        <div className="px-4 pt-1 pb-1 text-base font-semibold">Match chat</div>
+        {sheet === "chat" ? <MatchChatPanel matchId={matchId} /> : null}
       </Sheet>
 
       {gameJustEnded ? (

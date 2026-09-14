@@ -3,6 +3,8 @@ import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
 import { NotificationSettings } from "@/components/notification-settings";
+import { MessageSettings } from "@/components/message-settings";
+import { getMyMessagePrefs } from "@/lib/supabase/messages";
 import {
   Card,
   CardContent,
@@ -61,6 +63,7 @@ export default async function NotificationSettingsPage({
   const { data } = await supabase.rpc("my_notification_prefs");
   const challengeEmails =
     (data as { challenge_emails?: boolean } | null)?.challenge_emails ?? true;
+  const messagePrefs = await getMyMessagePrefs();
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-6 px-4 py-10">
@@ -86,6 +89,21 @@ export default async function NotificationSettingsPage({
         </CardHeader>
         <CardContent>
           <NotificationSettings initialChallengeEmails={challengeEmails} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Messaging</CardTitle>
+          <CardDescription>
+            Control who can send you direct messages.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <MessageSettings
+            initialDmPolicy={messagePrefs.dm_policy}
+            initialAnnouncementPromo={messagePrefs.announcement_promo}
+          />
         </CardContent>
       </Card>
 

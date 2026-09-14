@@ -15,13 +15,39 @@ import { cn } from "@/lib/utils";
 const LINKS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/matches", label: "Matches" },
+  { href: "/messages", label: "Messages" },
   { href: "/players", label: "Players" },
   { href: "/profile", label: "Profile" },
 ];
 
-export function HeaderNav({ authed, handle }: { authed: boolean; handle: string | null }) {
+function UnreadBadge({ count, className }: { count: number; className?: string }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className={cn(
+        "grid min-w-[18px] place-items-center rounded-full bg-primary px-1 text-[10px] font-bold leading-4 text-primary-foreground",
+        className,
+      )}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
+export function HeaderNav({
+  authed,
+  handle,
+  unread = 0,
+  isAdmin = false,
+}: {
+  authed: boolean;
+  handle: string | null;
+  unread?: number;
+  isAdmin?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const links = isAdmin ? [...LINKS, { href: "/admin/reports", label: "Admin" }] : LINKS;
 
   return (
     <>
@@ -42,13 +68,14 @@ export function HeaderNav({ authed, handle }: { authed: boolean; handle: string 
                   <InfoDot term="handle" />
                 </span>
               ) : null}
-              {LINKS.map((l) => (
+              {links.map((l) => (
                 <Link
                   key={l.href}
                   href={l.href}
-                  className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+                  className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "gap-1.5")}
                 >
                   {l.label}
+                  {l.href === "/messages" ? <UnreadBadge count={unread} /> : null}
                 </Link>
               ))}
               <ThemeToggle />
@@ -114,7 +141,7 @@ export function HeaderNav({ authed, handle }: { authed: boolean; handle: string 
               </svg>
             </button>
           </div>
-          {LINKS.map((l) => {
+          {links.map((l) => {
             const activeLink = pathname === l.href || pathname.startsWith(l.href + "/");
             return (
               <Link
@@ -122,11 +149,12 @@ export function HeaderNav({ authed, handle }: { authed: boolean; handle: string 
                 href={l.href}
                 onClick={() => setOpen(false)}
                 className={cn(
-                  "rounded-xl px-4 py-3 text-base font-medium",
+                  "flex items-center justify-between rounded-xl px-4 py-3 text-base font-medium",
                   activeLink ? "bg-muted text-foreground" : "text-foreground hover:bg-muted",
                 )}
               >
                 {l.label}
+                {l.href === "/messages" ? <UnreadBadge count={unread} /> : null}
               </Link>
             );
           })}
