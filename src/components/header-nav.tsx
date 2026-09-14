@@ -86,8 +86,22 @@ export function HeaderNav({
               </form>
             </nav>
 
-            {/* Mobile: theme toggle + hamburger */}
+            {/* Mobile: messages + theme toggle + hamburger */}
             <div className="flex items-center gap-1 md:hidden">
+              <Link
+                href="/messages"
+                aria-label={unread > 0 ? `Messages, ${unread} unread` : "Messages"}
+                className="relative grid size-10 place-items-center rounded-lg text-foreground"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                {unread > 0 ? (
+                  <span className="absolute right-0.5 top-0.5 grid min-w-[17px] place-items-center rounded-full bg-primary px-1 text-[10px] font-bold leading-[17px] text-primary-foreground ring-2 ring-background">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                ) : null}
+              </Link>
               <ThemeToggle />
               <button
                 type="button"
