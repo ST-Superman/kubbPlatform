@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getMessageReports, isPlatformAdmin } from "@/lib/supabase/messages";
 import { ReportsConsole } from "@/components/reports-console";
+import { DigestTest } from "@/components/digest-test";
 
 /** Admin-only moderation queue. Non-admins get a 404 (no admin surface leaked). */
 export default async function AdminReportsPage() {
@@ -28,6 +29,7 @@ export default async function AdminReportsPage() {
         </Link>
       </div>
       <ReportsConsole initial={reports} />
+      <DigestTest />
     </div>
   );
 }
