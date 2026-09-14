@@ -103,6 +103,7 @@ export default async function NotificationSettingsPage({
           <MessageSettings
             initialDmPolicy={messagePrefs.dm_policy}
             initialAnnouncementPromo={messagePrefs.announcement_promo}
+            initialDmEmailCadence={messagePrefs.dm_email_cadence}
           />
         </CardContent>
       </Card>

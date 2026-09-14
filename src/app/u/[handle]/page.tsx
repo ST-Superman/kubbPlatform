@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getPlayerProfile, getPlayerStats } from "@/lib/supabase/matches";
 import { MatchHistory } from "@/components/match-history";
 import { ChallengeButton } from "@/components/challenge-button";
+import { MessageButton } from "@/components/message-button";
 import { StatsBlock } from "@/components/stats-block";
 import { InfoDot } from "@/components/info-dot";
 import { ctaClass } from "@/components/brand";
@@ -46,6 +47,9 @@ export default async function PublicProfilePage({
     .slice(0, 5)
     .reverse();
   const isSelf = player.user_id === user.id;
+  // Whether the viewer may DM this player (played/challenged, not blocked, DMs on).
+  const canMessage =
+    !isSelf && ((await supabase.rpc("can_dm", { p_target_player: player.id })).data === true);
 
   // Match History shows only completed matches (a decided result), excluding the
   // managed test accounts — same exclusion the Stats section applies.
@@ -144,7 +148,12 @@ export default async function PublicProfilePage({
           </Link>
         </div>
       ) : (
-        <ChallengeButton playerId={player.id} label={firstName(player.display_name)} />
+        <div className={canMessage ? "grid grid-cols-2 gap-2" : undefined}>
+          <ChallengeButton playerId={player.id} label={firstName(player.display_name)} />
+          {canMessage ? (
+            <MessageButton playerId={player.id} label={firstName(player.display_name)} />
+          ) : null}
+        </div>
       )}
 
       {/* Singles throwing stats */}

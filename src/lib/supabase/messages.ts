@@ -48,11 +48,14 @@ export type ThreadMessage = {
   created_at: string;
 };
 
+export type DmEmailCadence = "in_app" | "daily" | "weekly";
+
 export type MessagePrefs = {
   dm_policy: "eligible" | "none";
   dm_emails: boolean;
   allow_group_add: boolean;
   announcement_promo: boolean;
+  dm_email_cadence: DmEmailCadence;
 };
 
 export type GroupablePlayer = {
@@ -163,6 +166,7 @@ export async function getMyMessagePrefs(): Promise<MessagePrefs> {
     dm_emails: d.dm_emails ?? true,
     allow_group_add: d.allow_group_add ?? true,
     announcement_promo: d.announcement_promo ?? true,
+    dm_email_cadence: d.dm_email_cadence ?? "in_app",
   };
 }
 
