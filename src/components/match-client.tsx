@@ -139,6 +139,39 @@ export function MatchClient({
   );
   const botTurnKeyRef = useRef<string>("");
 
+  // [F12] Unread dot on the Chat button — watch the match conversation from the
+  // match view, not only from inside the sheet, so inbound messages are noticed.
+  const [unseen, setUnseen] = useState(0);
+  const canChat =
+    !botCtx && Boolean(state.participants?.A?.user_id && state.participants?.B?.user_id);
+  const sheetRef = useRef<SheetName>(sheet);
+  useEffect(() => {
+    sheetRef.current = sheet;
+  });
+  useEffect(() => {
+    if (!canChat) return;
+    const supabase = createClient();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase.rpc("start_or_get_match_conversation", {
+        p_match_id: matchId,
+      });
+      const convId = data as string | null;
+      if (cancelled || !convId) return;
+      channel = supabase
+        .channel(`conv:${convId}:matchdot`)
+        .on("broadcast", { event: "message" }, () => {
+          if (sheetRef.current !== "chat") setUnseen((n) => n + 1);
+        })
+        .subscribe();
+    })();
+    return () => {
+      cancelled = true;
+      if (channel) void supabase.removeChannel(channel);
+    };
+  }, [matchId, canChat]);
+
   // Game-won interstitial: fire once each time another game gains a winner.
   // Detected as new state arrives (realtime refetch or an RPC result) rather than
   // in an effect, so we never setState synchronously inside an effect body. The
@@ -398,13 +431,22 @@ export function MatchClient({
         {!botCtx && parts.A?.user_id && parts.B?.user_id ? (
           <button
             type="button"
-            onClick={() => setSheet("chat")}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted"
+            onClick={() => {
+              setSheet("chat");
+              setUnseen(0); // [F12] opening clears the dot
+            }}
+            className="relative inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
             Chat
+            {unseen > 0 ? (
+              <span
+                aria-label={`${unseen} new message${unseen === 1 ? "" : "s"}`}
+                className="absolute -top-1 -right-1 size-2.5 rounded-full bg-gold ring-2 ring-card"
+              />
+            ) : null}
           </button>
         ) : null}
       </div>

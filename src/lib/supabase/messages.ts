@@ -56,6 +56,7 @@ export type MessagePrefs = {
   allow_group_add: boolean;
   announcement_promo: boolean;
   dm_email_cadence: DmEmailCadence;
+  read_receipts: boolean;
 };
 
 export type GroupablePlayer = {
@@ -167,6 +168,7 @@ export async function getMyMessagePrefs(): Promise<MessagePrefs> {
     allow_group_add: d.allow_group_add ?? true,
     announcement_promo: d.announcement_promo ?? true,
     dm_email_cadence: d.dm_email_cadence ?? "in_app",
+    read_receipts: d.read_receipts ?? true, // absent until the migration lands → default on
   };
 }
 

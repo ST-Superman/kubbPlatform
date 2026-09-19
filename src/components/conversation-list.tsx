@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
-import type { ConversationSummary } from "@/lib/supabase/messages";
+import type { ConversationSummary, ConversationType } from "@/lib/supabase/messages";
 import { cn } from "@/lib/utils";
 
 /**
@@ -40,8 +40,15 @@ export function ConversationList({ initial }: { initial: ConversationSummary[] }
       <div className="rounded-2xl border border-dashed border-border px-6 py-12 text-center">
         <p className="text-sm font-medium">No conversations yet</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Message a player you’ve played or challenged — start from their profile or a match.
+          Message a player you’ve played or challenged.
         </p>
+        {/* [F15] Link straight to the players list instead of describing where to go. */}
+        <Link
+          href="/players"
+          className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
+        >
+          Find a player →
+        </Link>
       </div>
     );
   }
@@ -59,7 +66,14 @@ export function ConversationList({ initial }: { initial: ConversationSummary[] }
           ? c.last_message.body ?? "Message removed"
           : "No messages yet";
         return (
-          <li key={c.conversation_id}>
+          // [F13] Unread reads as rail + tint + weight — legible without relying on weight alone.
+          <li
+            key={c.conversation_id}
+            className={cn(
+              "border-l-[3px]",
+              c.unread > 0 ? "border-l-primary bg-primary/5" : "border-l-transparent",
+            )}
+          >
             <Link
               href={`/messages/${c.conversation_id}`}
               className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50"
@@ -67,9 +81,17 @@ export function ConversationList({ initial }: { initial: ConversationSummary[] }
               <Initials name={name} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span className={cn("truncate text-sm", c.unread > 0 ? "font-semibold" : "font-medium")}>
-                    {name}
-                  </span>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span
+                      className={cn(
+                        "truncate text-sm",
+                        c.unread > 0 ? "font-semibold" : "font-medium",
+                      )}
+                    >
+                      {name}
+                    </span>
+                    <TypeChip type={c.type} />
+                  </div>
                   {c.last_at ? (
                     <span className="shrink-0 text-[11px] text-muted-foreground">
                       {formatWhen(c.last_at)}
@@ -98,6 +120,23 @@ export function ConversationList({ initial }: { initial: ConversationSummary[] }
       })}
     </ul>
   );
+}
+
+/** [F13] What kind of conversation this is — so "Match chat" isn't the only cue. */
+function TypeChip({ type }: { type: ConversationType }) {
+  if (type === "match")
+    return (
+      <span className="shrink-0 rounded bg-chart-5/10 px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wide text-chart-5 uppercase">
+        From match
+      </span>
+    );
+  if (type === "group")
+    return (
+      <span className="shrink-0 rounded bg-forest/10 px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wide text-forest uppercase">
+        Group
+      </span>
+    );
+  return null;
 }
 
 function Initials({ name }: { name: string }) {

@@ -8,7 +8,7 @@ import type { DmEmailCadence } from "@/lib/supabase/messages";
 import { cn } from "@/lib/utils";
 
 const CADENCE_OPTIONS: { value: DmEmailCadence; label: string; description: string }[] = [
-  { value: "in_app", label: "In-app only", description: "No emails — just the unread badge and the Messages tab. (Default)" },
+  { value: "in_app", label: "Only in the app (default)", description: "See messages on the unread badge and the Messages tab — no emails." },
   { value: "daily", label: "Daily review", description: "One email a day recapping unread messages." },
   { value: "weekly", label: "Weekly review", description: "One email each Saturday recapping unread messages." },
 ];
@@ -18,20 +18,29 @@ const CADENCE_OPTIONS: { value: DmEmailCadence; label: string; description: stri
  *  - dm_policy ('eligible' | 'none') — gates can_dm (who may DM you).
  *  - dm_email_cadence — how (and whether) we email you about DMs.
  *  - announcement_promo — mute promotional announcements ('critical' always shows).
- * All optimistic. allow_group_add exists in the schema and isn't surfaced yet.
+ *  - allow_group_add — whether players you've played can add you to group threads.
+ *  - read_receipts — gates typing + seen, both directions. Requires the
+ *    20260919120000_message_read_receipts migration (7-arg set_message_prefs).
+ * All optimistic.
  */
 export function MessageSettings({
   initialDmPolicy,
   initialAnnouncementPromo,
   initialDmEmailCadence,
+  initialAllowGroupAdd,
+  initialReadReceipts,
 }: {
   initialDmPolicy: "eligible" | "none";
   initialAnnouncementPromo: boolean;
   initialDmEmailCadence: DmEmailCadence;
+  initialAllowGroupAdd: boolean;
+  initialReadReceipts: boolean;
 }) {
   const [dmOn, setDmOn] = useState(initialDmPolicy === "eligible");
   const [promoOn, setPromoOn] = useState(initialAnnouncementPromo);
   const [cadence, setCadence] = useState<DmEmailCadence>(initialDmEmailCadence);
+  const [groupAddOn, setGroupAddOn] = useState(initialAllowGroupAdd);
+  const [receiptsOn, setReceiptsOn] = useState(initialReadReceipts);
   const [pending, start] = useTransition();
 
   function save(
@@ -39,6 +48,8 @@ export function MessageSettings({
       p_dm_policy?: "eligible" | "none";
       p_announcement_promo?: boolean;
       p_dm_email_cadence?: DmEmailCadence;
+      p_allow_group_add?: boolean;
+      p_read_receipts?: boolean;
     },
     revert: () => void,
     okMsg: string,
@@ -75,6 +86,26 @@ export function MessageSettings({
     );
   }
 
+  function toggleGroupAdd() {
+    const next = !groupAddOn;
+    setGroupAddOn(next);
+    save(
+      { p_allow_group_add: next },
+      () => setGroupAddOn(!next),
+      next ? "Group invites on" : "Group invites off",
+    );
+  }
+
+  function toggleReceipts() {
+    const next = !receiptsOn;
+    setReceiptsOn(next);
+    save(
+      { p_read_receipts: next },
+      () => setReceiptsOn(!next),
+      next ? "Read receipts on" : "Read receipts off",
+    );
+  }
+
   function chooseCadence(next: DmEmailCadence) {
     if (next === cadence) return;
     const prev = cadence;
@@ -89,6 +120,22 @@ export function MessageSettings({
         description="When on, players you’ve played or challenged can message you. When off, no one can start or continue a DM with you."
         checked={dmOn}
         onToggle={toggleDm}
+        disabled={pending}
+      />
+
+      <Row
+        title="Group invites"
+        description="When on, players you’ve played can add you to group threads."
+        checked={groupAddOn}
+        onToggle={toggleGroupAdd}
+        disabled={pending}
+      />
+
+      <Row
+        title="Read receipts"
+        description="Show others when you’ve read their messages. When off, you won’t see theirs either."
+        checked={receiptsOn}
+        onToggle={toggleReceipts}
         disabled={pending}
       />
 

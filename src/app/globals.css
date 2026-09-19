@@ -51,6 +51,11 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Pass 3 · Q4 — dedicated chat-bubble tokens (never borrow --muted/--primary). */
+  --color-bubble-them: var(--bubble-them);
+  --color-bubble-them-foreground: var(--bubble-them-foreground);
+  --color-bubble-mine: var(--bubble-mine);
+  --color-bubble-mine-foreground: var(--bubble-mine-foreground);
 }
 
 /*
@@ -104,6 +109,18 @@
   --sidebar-accent-foreground: #13254a;
   --sidebar-border: rgba(60, 60, 67, 0.2);
   --sidebar-ring: #006aa7;
+
+  /* Pass 3 · chat bubbles (Q4) — measured contrast in comments (bubble vs bg / ink vs bubble) */
+  --bubble-them: #eeece4; /* paper-2 · vs #fff 1.09; ink 14.6:1 */
+  --bubble-them-foreground: #13182b;
+  --bubble-mine: #006aa7; /* swedish blue · white 5.80:1 */
+  --bubble-mine-foreground: #ffffff;
+
+  /* Pass 3 · status-strip inks (Q6) — a token per state; the DS only lifts *-bright in dark */
+  --status-live-ink: #1f6646; /* 6.00:1 */
+  --status-typing-ink: #00537f; /* 7.14:1 */
+  --status-warn-ink: #8a5a10; /* 5.17:1 */
+  --status-offline-ink: #a32323; /* 6.18:1 */
 }
 
 .dark {
@@ -142,6 +159,18 @@
   --sidebar-accent-foreground: #f5f5f7;
   --sidebar-border: rgba(255, 255, 255, 0.12);
   --sidebar-ring: #3b8fcc;
+
+  /* Pass 3 · chat bubbles (Q4) */
+  --bubble-them: #333b46; /* lifted clear of --card #1c2028 · vs 1.44; ink #f5f5f7 10.4:1 */
+  --bubble-them-foreground: #f5f5f7;
+  --bubble-mine: #2a6fa3; /* NOT --primary #2c82bf (white 4.16:1 fails) · white 5.38:1 */
+  --bubble-mine-foreground: #ffffff;
+
+  /* Pass 3 · status-strip inks (Q6) */
+  --status-live-ink: #5ed198; /* 7.03:1 */
+  --status-typing-ink: #6fb6e4; /* 6.86:1 */
+  --status-warn-ink: #e8a54a; /* 6.03:1 */
+  --status-offline-ink: #ff8a8a; /* 6.67:1 */
 }
 
 @layer base {

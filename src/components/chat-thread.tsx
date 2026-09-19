@@ -11,14 +11,17 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowUp, Loader2, MoreVertical } from "lucide-react";
+import { ArrowUp, MoreVertical } from "lucide-react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 import { createClient } from "@/lib/supabase/client";
 import { messageErrorText } from "@/lib/message-errors";
 import type { ThreadMessage } from "@/lib/supabase/messages";
+import { toRows, timeLabel } from "@/lib/group-messages";
 import { ctaClass } from "@/components/brand";
 import { MessageBody } from "@/components/message-body";
 import { ReportDialog, BlockConfirm } from "@/components/report-dialog";
+import { ThreadStatus, useTypingName, type Conn } from "@/components/thread-status";
 import { Sheet } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { useLongPress } from "@/hooks/use-long-press";
@@ -33,18 +36,23 @@ function subscribeFinePointer(cb: () => void) {
 }
 const getFinePointer = () => window.matchMedia(POINTER_FINE).matches;
 
+// [F15] Empty-state one-taps — in a match they double as always-available quick replies.
+const MATCH_REPLIES = ["Good luck", "Nice throw", "Rematch?"];
+const DM_OPENERS = ["Good game", "Rematch?"];
+
+type SendPhase = "sending" | "queued" | "failed" | "sent";
+
 /**
  * The reusable conversation thread — used by the DM page (/messages/[id]) and the
- * in-match chat panel. Subscribes to the `conv:<id>` broadcast (same transport as
- * match-client's `match:<id>`), sends optimistically, marks read on mount + on
- * inbound, and exposes per-message block/report affordances.
+ * in-match chat panel. Subscribes to the `conv:<id>` broadcast, sends optimistically,
+ * marks read on mount + on inbound, exposes per-message block/report.
  *
- * Pass 1: [F1] 16px composer · [F2] dvh + safe area · [F3] list scroll · [F5]
- * auto-grow · [Q2] drafts · [Q8] one round-trip per message.
- * Pass 2: [F6] desktop-only Enter-to-send + hint/counter · [Q1] load-earlier
- * paging with scroll anchoring · [F4] touch-reachable actions (long-press /
- * right-click / ⋮ → one action sheet) · [F14] 44px Send · [Q7] linkified bodies.
- * Transport, RPCs, optimistic send and can_dm gating are unchanged.
+ * Pass 1: 16px composer · dvh + safe area · list scroll · auto-grow · drafts.
+ * Pass 2: desktop-only Enter · load-earlier paging · touch actions · 44px Send · links.
+ * Pass 3: [F8/F9] runs, day dividers, timestamps OUTSIDE the bubble, optimistic-at-60%,
+ * inline retry · [Q4] dedicated bubble tokens · [Q6] connection status slot + offline
+ * send queue · [F15] empty-state quick replies.
+ * (Typing + seen + the read_receipts gate land with their migration — deferred.)
  */
 export function ChatThread({
   conversationId,
@@ -60,24 +68,77 @@ export function ChatThread({
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [messages, setMessages] = useState<ThreadMessage[]>(initialMessages);
-  const [sending, setSending] = useState(false);
 
-  // [F6] Desktop pointer → Enter sends; touch → Enter is a newline. Read the media
-  // query as an external store: reactive, SSR-safe (server = touch), and no
-  // setState-in-effect.
+  // [F6] Desktop pointer → Enter sends; touch → Enter is a newline.
   const isFine = useSyncExternalStore(subscribeFinePointer, getFinePointer, () => false);
 
-  // [Q1] History paging.
+  // [Q6] Connection state drives the status slot + the offline send queue.
+  const [conn, setConn] = useState<Conn>("live");
+  // Per-message send phase for MY optimistic messages (absent → confirmed "sent").
+  const [sendState, setSendState] = useState<Record<string, SendPhase>>({});
+  const queueRef = useRef<{ id: string; body: string }[]>([]); // held while offline
+
+  // [Q6] Typing + seen ride the same conv:<id> channel, gated on read receipts.
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const [readReceipts, setReadReceipts] = useState(true);
+  const readReceiptsRef = useRef(true);
+  useEffect(() => {
+    readReceiptsRef.current = readReceipts;
+  });
+  const [myName, setMyName] = useState("You");
+  const [seenAt, setSeenAt] = useState<string | null>(null);
+  const { typingName, onTyping } = useTypingName(myPlayerId);
+  const onTypingRef = useRef(onTyping);
+  useEffect(() => {
+    onTypingRef.current = onTyping;
+  });
+  const lastTypingPing = useRef(0);
+
+  // My read-receipts pref (gates typing + seen, both ways) + display name (typing payload).
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { data: prefs } = await supabase.rpc("my_message_prefs");
+      const rr = (prefs as { read_receipts?: boolean } | null)?.read_receipts;
+      if (!cancelled && typeof rr === "boolean") setReadReceipts(rr);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: me } = await supabase
+        .from("players")
+        .select("display_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const name = (me as { display_name?: string } | null)?.display_name;
+      if (!cancelled && name) setMyName(name);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
+
+  function pingTyping() {
+    if (!readReceipts) return;
+    const ch = channelRef.current;
+    if (!ch) return;
+    const now = Date.now();
+    if (now - lastTypingPing.current < 3000) return; // throttle: one ping / 3s
+    lastTypingPing.current = now;
+    void ch.send({ type: "broadcast", event: "typing", payload: { id: myPlayerId, name: myName } });
+  }
+
+  // History paging.
   const [hasMore, setHasMore] = useState(initialMessages.length >= 50);
   const [loadingMore, setLoadingMore] = useState(false);
-  const anchor = useRef<number | null>(null); // pre-prepend scrollHeight
+  const anchor = useRef<number | null>(null);
 
-  // [F4] Message-action state.
+  // Message-action state.
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [reportFor, setReportFor] = useState<ThreadMessage | null>(null);
   const [blockFor, setBlockFor] = useState<{ id: string; name: string } | null>(null);
 
-  // [Q2] Draft survives the sheet unmounting / navigating away, per conversation.
+  // Draft survives the sheet unmounting / navigating away, per conversation.
   const draftKey = `kubb:draft:${conversationId}`;
   const [input, setInput] = useState<string>(() =>
     typeof window === "undefined" ? "" : (sessionStorage.getItem(draftKey) ?? ""),
@@ -87,11 +148,8 @@ export function ChatThread({
     else sessionStorage.removeItem(draftKey);
   }, [draftKey, input]);
 
-  // [F3] Scroll the list, not the document.
   const listRef = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
-
-  // [Q8] Debounce the read/refresh and the fallback refetch.
   const readTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -106,10 +164,18 @@ export function ChatThread({
 
   const markRead = useCallback(async () => {
     await supabase.rpc("mark_read", { p_conversation_id: conversationId });
+    // [Q6] Tell the other side we've read (gated on our receipts pref); `by` lets
+    // them ignore their own reads. They mark their messages older than `at` as seen.
+    if (readReceiptsRef.current) {
+      void channelRef.current?.send({
+        type: "broadcast",
+        event: "read",
+        payload: { at: new Date().toISOString(), by: myPlayerId },
+      });
+    }
     router.refresh(); // updates the nav unread badge (server-rendered)
-  }, [conversationId, supabase, router]);
+  }, [conversationId, supabase, router, myPlayerId]);
 
-  // [Q8] was: every broadcast → refetch 50 rows → mark_read → router.refresh().
   const scheduleMarkRead = useCallback(() => {
     if (readTimer.current) clearTimeout(readTimer.current);
     readTimer.current = setTimeout(() => void markRead(), 1500);
@@ -126,26 +192,52 @@ export function ChatThread({
       .on("broadcast", { event: "message" }, ({ payload }) => {
         const row = payload as Partial<ThreadMessage> | undefined;
         if (row?.id && row.body !== undefined) {
-          // Append the row we were handed — dedupe covers our own optimistic copy.
           setMessages((m) =>
             m.some((x) => x.id === row.id) ? m : [...m, row as ThreadMessage],
           );
         } else {
-          // TODO: have send_message broadcast the full row, then drop this branch.
           scheduleRefetch();
         }
         scheduleMarkRead();
       })
+      .on("broadcast", { event: "typing" }, ({ payload }) => {
+        if (readReceiptsRef.current) onTypingRef.current(payload as { id: string; name: string });
+      })
+      .on("broadcast", { event: "read" }, ({ payload }) => {
+        const p = payload as { at: string; by: string };
+        if (p.by !== myPlayerId && readReceiptsRef.current) setSeenAt(p.at);
+      })
       .subscribe((status) => {
-        // Reconnect is the correctness path — resync in full.
-        if (status === "SUBSCRIBED") void refetch();
+        // [Q6] Map channel status onto our three connection states.
+        if (status === "SUBSCRIBED") {
+          setConn("live");
+          void refetch(); // reconnect is the correctness path
+        } else if (status === "CHANNEL_ERROR") {
+          setConn("reconnecting");
+        } else if (status === "TIMED_OUT" || status === "CLOSED") {
+          setConn("offline");
+        }
       });
+    channelRef.current = channel;
     return () => {
       if (readTimer.current) clearTimeout(readTimer.current);
       if (refetchTimer.current) clearTimeout(refetchTimer.current);
+      channelRef.current = null;
       void supabase.removeChannel(channel);
     };
-  }, [conversationId, supabase, refetch, scheduleRefetch, scheduleMarkRead]);
+  }, [conversationId, supabase, refetch, scheduleRefetch, scheduleMarkRead, myPlayerId]);
+
+  // [Q6] The channel can be slow to notice a dropped network; listen to the browser too.
+  useEffect(() => {
+    const onOnline = () => setConn("reconnecting");
+    const onOffline = () => setConn("offline");
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
 
   // Clear unread when the thread opens.
   useEffect(() => {
@@ -153,29 +245,25 @@ export function ChatThread({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId]);
 
-  // [F3]/[Q1] One layout effect owns scroll on every message change, branching so
-  // the two cases never fight: a prepend (paging) restores the reader's position,
-  // otherwise pin to the bottom only if they were already there.
+  // One layout effect owns scroll on every message change: a prepend (paging)
+  // restores position; otherwise pin to bottom only if the reader was already there.
   useLayoutEffect(() => {
     const el = listRef.current;
     if (!el) return;
     if (anchor.current != null) {
-      el.scrollTop += el.scrollHeight - anchor.current; // keep position across prepend
+      el.scrollTop += el.scrollHeight - anchor.current;
       anchor.current = null;
     } else if (pinned.current) {
       el.scrollTop = el.scrollHeight;
     }
   }, [messages]);
 
-  // [F3] Track whether the reader is at the bottom — an inbound message must never
-  // yank someone out of the history they're reading.
   function onListScroll() {
     const el = listRef.current;
     if (!el) return;
     pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
   }
 
-  // [Q1] Page older messages in, anchoring scroll so the reader doesn't jump.
   async function loadEarlier() {
     const first = messages[0];
     if (!first || loadingMore) return;
@@ -192,9 +280,35 @@ export function ChatThread({
     setLoadingMore(false);
   }
 
-  async function send() {
-    const body = input.trim();
-    if (!body || sending) return;
+  // The one network write, shared by send / retry / offline-flush. `p_client_id`
+  // makes it idempotent, so a re-send (retry, or a double flush) never duplicates.
+  const postMessage = useCallback(
+    async (body: string, clientId: string) => {
+      setSendState((s) => ({ ...s, [clientId]: "sending" }));
+      const { error } = await supabase.rpc("send_message", {
+        p_conversation_id: conversationId,
+        p_body: body,
+        p_client_id: clientId,
+      });
+      if (error) {
+        setSendState((s) => ({ ...s, [clientId]: "failed" })); // [F9] keep the bubble, offer retry
+        toast.error(messageErrorText(error.message));
+        return;
+      }
+      setSendState((s) => {
+        const next = { ...s };
+        delete next[clientId]; // → confirmed "sent"
+        return next;
+      });
+      sessionStorage.removeItem(draftKey);
+      void refetch(); // reconcile with the canonical row (same id → no duplicate)
+    },
+    [conversationId, supabase, draftKey, refetch],
+  );
+
+  function sendBody(raw: string) {
+    const body = raw.trim();
+    if (!body) return;
     const clientId =
       typeof crypto !== "undefined" && "randomUUID" in crypto
         ? crypto.randomUUID()
@@ -211,25 +325,35 @@ export function ChatThread({
     };
     setMessages((m) => [...m, optimistic]);
     pinned.current = true; // sending always scrolls you down
-    setInput("");
-    setSending(true);
 
-    const { error } = await supabase.rpc("send_message", {
-      p_conversation_id: conversationId,
-      p_body: body,
-      p_client_id: clientId,
-    });
-    setSending(false);
-
-    if (error) {
-      setMessages((m) => m.filter((x) => x.id !== clientId)); // revert optimistic
-      setInput(body); // [Q2] restores the draft, and re-persists it
-      toast.error(messageErrorText(error.message));
+    if (conn === "offline") {
+      // [Q6] Hold it; the flush effect resends in order when we're back.
+      queueRef.current.push({ id: clientId, body });
+      setSendState((s) => ({ ...s, [clientId]: "queued" }));
       return;
     }
-    sessionStorage.removeItem(draftKey); // [Q2] only on a CONFIRMED send
-    void refetch(); // reconcile with the canonical row (same id → no duplicate)
+    void postMessage(body, clientId);
   }
+
+  function send() {
+    if (!input.trim()) return;
+    const body = input;
+    setInput("");
+    sendBody(body);
+  }
+
+  // [Q6] Flush the offline queue in order once we're live again.
+  const flush = useCallback(() => {
+    if (queueRef.current.length === 0) return;
+    const batch = queueRef.current;
+    queueRef.current = [];
+    void (async () => {
+      for (const q of batch) await postMessage(q.body, q.id);
+    })();
+  }, [postMessage]);
+  useEffect(() => {
+    if (conn === "live") flush();
+  }, [conn, flush]);
 
   // [F11] Blocking always confirms first (BlockConfirm), then this runs.
   async function confirmBlock(playerId: string) {
@@ -257,17 +381,27 @@ export function ChatThread({
     if (!isFine) return; // [F6] touch: let Enter insert a newline
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      void send();
+      send();
     }
   }
 
   const menuMsg = menuFor ? (messages.find((m) => m.id === menuFor) ?? null) : null;
+  // Name labels only make sense with more than one other voice (groups / match).
+  const showNames = useMemo(
+    () =>
+      variant === "panel" ||
+      new Set(
+        messages.filter((m) => m.sender_player_id !== myPlayerId).map((m) => m.sender_player_id),
+      ).size > 1,
+    [messages, myPlayerId, variant],
+  );
+  const rows = useMemo(() => toRows(messages), [messages]);
+  const showQuickReplies = variant === "panel" && !input.trim();
 
   return (
     <div
       className={cn(
         "flex flex-col",
-        // [F2] dvh tracks the visual viewport; vh does not shrink for the keyboard.
         variant === "page"
           ? "h-[calc(100dvh-13rem)] min-h-[24rem]"
           : "h-[60dvh] max-h-[80dvh]",
@@ -279,9 +413,8 @@ export function ChatThread({
         role="log"
         aria-live="polite"
         aria-label="Messages"
-        className="flex-1 space-y-2 overflow-y-auto px-1 py-3"
+        className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-1 py-3"
       >
-        {/* [Q1] Explicit, predictable pager — an IntersectionObserver can come later. */}
         {hasMore ? (
           <div className="flex justify-center py-1">
             <button
@@ -296,57 +429,82 @@ export function ChatThread({
         ) : null}
 
         {messages.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">
-            No messages yet — say hello.
-          </p>
+          // [F15] The quick replies ARE the empty state.
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 py-10">
+            <p className="text-sm text-muted-foreground">
+              {variant === "panel" ? "Say something to your opponent." : "Start the conversation."}
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {(variant === "panel" ? MATCH_REPLIES : DM_OPENERS).map((t) => (
+                <QuickChip key={t} text={t} onSend={sendBody} />
+              ))}
+            </div>
+          </div>
         ) : (
-          messages.map((m) => (
-            <MessageRow
-              key={m.id}
-              m={m}
-              mine={m.sender_player_id === myPlayerId}
-              onOpenMenu={() => setMenuFor(m.id)}
-            />
-          ))
+          rows.map((row) =>
+            row.kind === "day" ? (
+              <DayDivider key={`d-${row.label}`} label={row.label} />
+            ) : (
+              <MessageRow
+                key={row.m.id}
+                m={row.m}
+                mine={row.m.sender_player_id === myPlayerId}
+                first={row.first}
+                last={row.last}
+                showName={showNames}
+                phase={(sendState[row.m.id] as SendPhase) ?? "sent"}
+                seen={
+                  row.m.sender_player_id === myPlayerId &&
+                  readReceipts &&
+                  seenAt != null &&
+                  +new Date(row.m.created_at) <= +new Date(seenAt)
+                }
+                onRetry={() => row.m.body && void postMessage(row.m.body, row.m.id)}
+                onOpenMenu={() => setMenuFor(row.m.id)}
+              />
+            ),
+          )
         )}
       </div>
 
-      {/* [F2] safe-area padding: the app sets viewportFit: cover. */}
+      {/* [F15] Match quick replies stay reachable while the composer is empty. */}
+      {showQuickReplies && messages.length > 0 ? (
+        <div className="flex flex-wrap gap-2 px-4 pb-1">
+          {MATCH_REPLIES.map((t) => (
+            <QuickChip key={t} text={t} onSend={sendBody} small />
+          ))}
+        </div>
+      ) : null}
+
+      {/* [Q6] One reserved status slot above the composer; typing shown only if receipts on. */}
+      <ThreadStatus conn={conn} typingName={readReceipts ? typingName : null} />
+
       <div className="border-t border-border pt-3 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
         <div className="flex items-end gap-2">
-          {/* [F1][F5] 16px on touch + auto-grow, both owned by the shared component. */}
           <Textarea
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value);
+              pingTyping(); // [Q6] throttled typing broadcast (gated on read receipts)
+            }}
             onKeyDown={onKeyDown}
             maxLength={4000}
             placeholder="Message…"
             aria-label="Message"
             className="flex-1"
           />
-          {/* [F14] 44px CTA; arrow on mobile, SEND on desktop, spinner while in flight. */}
           <button
             type="button"
-            // Without this the first tap blurs the composer, the keyboard collapses,
-            // the layout shifts, and the click never lands — you have to tap twice.
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => void send()}
-            disabled={sending || !input.trim()}
+            onClick={() => send()}
+            disabled={!input.trim()}
             aria-label="Send message"
-            aria-busy={sending}
             className={cn(ctaClass("primary", "sm"), "size-11 shrink-0 md:w-auto md:px-5")}
           >
-            {sending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <>
-                <ArrowUp className="size-5 md:hidden" />
-                <span className="hidden md:inline">Send</span>
-              </>
-            )}
+            <ArrowUp className="size-5 md:hidden" />
+            <span className="hidden md:inline">Send</span>
           </button>
         </div>
-        {/* [F6] Hint only where Enter sends; counter only near the cap. */}
         {isFine || input.length > 3800 ? (
           <div className="mt-1 flex items-center justify-between px-1">
             {isFine ? (
@@ -402,7 +560,6 @@ export function ChatThread({
         ) : null}
       </Sheet>
 
-      {/* [F10] Categorised report dialog (replaces window.prompt). */}
       {reportFor ? (
         <ReportDialog
           open
@@ -420,7 +577,6 @@ export function ChatThread({
         />
       ) : null}
 
-      {/* [F11] Block confirmation. */}
       {blockFor ? (
         <BlockConfirm
           open
@@ -438,67 +594,148 @@ export function ChatThread({
 const actionRow =
   "flex min-h-[52px] items-center rounded-lg px-3 text-left text-sm hover:bg-muted";
 
+/** [F15] A one-tap opener / quick reply. */
+function QuickChip({
+  text,
+  onSend,
+  small,
+}: {
+  text: string;
+  onSend: (t: string) => void;
+  small?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => onSend(text)}
+      className={cn(
+        "rounded-full border border-border text-foreground hover:bg-muted",
+        small ? "px-3 py-1.5 text-[13px]" : "px-4 py-2 text-sm",
+      )}
+    >
+      {text}
+    </button>
+  );
+}
+
+/** [F9] Hairline day divider — same 9px mono vocabulary as the Journey timeline. */
+function DayDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 py-2">
+      <div className="h-px flex-1 bg-border" />
+      <span className="eyebrow text-[9px] text-muted-foreground">{label}</span>
+      <div className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+
+/** [F8][F9] Send state, shown outside the bubble on my last-in-run message. */
+function SendState({ phase, seen }: { phase: SendPhase; seen: boolean }) {
+  if (phase === "sending") return <span>Sending…</span>;
+  if (phase === "queued") return <span>Will send when you’re back</span>;
+  if (seen) return <span className="text-(--status-live-ink)">✓ Seen</span>;
+  return <span>✓ Sent</span>;
+}
+
 /**
- * One message bubble. [F4] the bubble itself is the long-press / right-click
- * target (own component so `useLongPress` isn't called inside a map), and a
- * hover-revealed ⋮ opens the same menu on desktop — all three routes into
- * `onOpenMenu`. [Q7] body is linkified via MessageBody. Actions are offered on
- * other people's messages only.
+ * One message. [F9] runs share a name + one timestamp and square their inner
+ * corner; the timestamp lives OUTSIDE the bubble ([F8], retiring white-on-blue).
+ * [F4] the bubble is the long-press / right-click target. [Q4] dedicated tokens.
  */
 function MessageRow({
   m,
   mine,
+  first,
+  last,
+  showName,
+  phase,
+  seen,
+  onRetry,
   onOpenMenu,
 }: {
   m: ThreadMessage;
   mine: boolean;
+  first: boolean;
+  last: boolean;
+  showName: boolean;
+  phase: SendPhase;
+  seen: boolean;
+  onRetry: () => void;
   onOpenMenu: () => void;
 }) {
   const press = useLongPress(onOpenMenu);
   const actionable = !mine;
+  const pending = mine && (phase === "sending" || phase === "queued");
 
   return (
-    <div className={cn("group flex items-end gap-1.5", mine ? "justify-end" : "justify-start")}>
-      {actionable ? (
-        <button
-          type="button"
-          aria-label="Message options"
-          onClick={onOpenMenu}
-          className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100 focus-visible:opacity-100"
-        >
-          <MoreVertical className="size-4" />
-        </button>
+    <div className={cn("flex flex-col", mine ? "items-end" : "items-start", !first && "mt-[3px]")}>
+      {first && !mine && showName ? (
+        <div className="mb-0.5 ml-1.5 eyebrow text-[9px] text-muted-foreground">
+          {m.sender_display_name ?? "Player"}
+        </div>
       ) : null}
-      <div
-        {...(actionable ? press : {})}
-        className={cn(
-          "max-w-[78%] rounded-2xl px-3.5 py-2 text-sm",
-          actionable && "cursor-default select-none [-webkit-touch-callout:none]",
-          mine ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
-        )}
-      >
-        {!mine ? (
-          <div className="mb-0.5 text-[11px] font-semibold text-muted-foreground">
-            {m.sender_display_name ?? "Player"}
-          </div>
+
+      <div className={cn("group flex items-end gap-1.5", mine ? "flex-row-reverse" : "flex-row")}>
+        {actionable ? (
+          <button
+            type="button"
+            aria-label="Message options"
+            onClick={onOpenMenu}
+            className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100 focus-visible:opacity-100"
+          >
+            <MoreVertical className="size-4" />
+          </button>
         ) : null}
-        {m.deleted ? (
-          <span className="italic opacity-70">Message removed</span>
-        ) : (
-          <MessageBody body={m.body ?? ""} mine={mine} />
-        )}
         <div
+          {...(actionable ? press : {})}
           className={cn(
-            "mt-0.5 text-[10px]",
-            mine ? "text-primary-foreground/70" : "text-muted-foreground",
+            "max-w-[80%] px-3.5 py-2 text-[15px] leading-snug",
+            actionable && "cursor-default select-none [-webkit-touch-callout:none]",
+            mine
+              ? "bg-bubble-mine text-bubble-mine-foreground"
+              : "bg-bubble-them text-bubble-them-foreground",
+            mine
+              ? first
+                ? "rounded-2xl rounded-br-md"
+                : "rounded-2xl rounded-tr-md rounded-br-md"
+              : first
+                ? "rounded-2xl rounded-bl-md"
+                : "rounded-2xl rounded-tl-md rounded-bl-md",
+            pending && "opacity-60",
           )}
         >
-          {new Date(m.created_at).toLocaleTimeString([], {
-            hour: "numeric",
-            minute: "2-digit",
-          })}
+          {m.deleted ? (
+            <span className="italic opacity-70">Message removed</span>
+          ) : (
+            <MessageBody body={m.body ?? ""} mine={mine} />
+          )}
         </div>
       </div>
+
+      {last ? (
+        <div
+          className={cn(
+            "mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground",
+            mine ? "mr-1 self-end" : "ml-1.5 self-start",
+          )}
+        >
+          <time dateTime={m.created_at}>{timeLabel(m.created_at)}</time>
+          {mine ? (
+            phase === "failed" ? (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="font-semibold text-destructive hover:underline"
+              >
+                Failed · Tap to retry
+              </button>
+            ) : (
+              <SendState phase={phase} seen={seen} />
+            )
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

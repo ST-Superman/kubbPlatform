@@ -104,6 +104,8 @@ export default async function NotificationSettingsPage({
             initialDmPolicy={messagePrefs.dm_policy}
             initialAnnouncementPromo={messagePrefs.announcement_promo}
             initialDmEmailCadence={messagePrefs.dm_email_cadence}
+            initialAllowGroupAdd={messagePrefs.allow_group_add}
+            initialReadReceipts={messagePrefs.read_receipts}
           />
         </CardContent>
       </Card>
