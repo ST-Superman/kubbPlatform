@@ -562,7 +562,6 @@ export function MatchClient({
       </Sheet>
 
       <Sheet open={sheet === "chat"} onClose={() => setSheet(null)} title="Match chat">
-        <div className="px-4 pt-1 pb-1 text-base font-semibold">Match chat</div>
         {sheet === "chat" ? <MatchChatPanel matchId={matchId} /> : null}
       </Sheet>
 

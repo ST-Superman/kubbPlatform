@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import type { GroupablePlayer } from "@/lib/supabase/messages";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 /**
@@ -65,13 +66,13 @@ export function NewGroupForm({ players }: { players: GroupablePlayer[] }) {
         <label htmlFor="group-title" className="text-sm font-medium">
           Group name
         </label>
-        <input
+        <Input
           id="group-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           maxLength={100}
           placeholder="Weekend crew"
-          className="mt-1 w-full rounded-xl border border-input bg-background px-3.5 py-2 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+          className="mt-1"
         />
       </div>
 

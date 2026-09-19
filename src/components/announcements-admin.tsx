@@ -5,6 +5,8 @@ import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import type { Announcement, AnnouncementSeverity } from "@/lib/supabase/messages";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 /**
@@ -96,20 +98,19 @@ function Composer({
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
-      <input
+      <Input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         maxLength={200}
         placeholder="Title"
-        className="w-full rounded-xl border border-input bg-background px-3.5 py-2 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
       />
-      <textarea
+      <Textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
         maxLength={8000}
-        rows={4}
+        maxRows={10}
         placeholder="Message to all users…"
-        className="w-full resize-y rounded-xl border border-input bg-background px-3.5 py-2 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+        className="min-h-24"
       />
       <SeverityPicker value={severity} onChange={setSeverity} />
       <div className="flex gap-2">
@@ -204,18 +205,17 @@ function Row({
     <li className="rounded-xl border border-border bg-card px-4 py-3">
       {editing ? (
         <div className="flex flex-col gap-2">
-          <input
+          <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={200}
-            className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
           />
-          <textarea
+          <Textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             maxLength={8000}
-            rows={3}
-            className="w-full resize-y rounded-lg border border-input bg-background px-3 py-1.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+            maxRows={8}
+            className="min-h-20"
           />
           <SeverityPicker value={severity} onChange={setSeverity} />
           <div className="flex gap-2">
