@@ -271,7 +271,7 @@ export function ChatThread({
     anchor.current = listRef.current?.scrollHeight ?? null; // capture BEFORE the prepend
     const { data } = await supabase.rpc("conversation_messages", {
       p_conversation_id: conversationId,
-      p_before: first.created_at,
+      p_before: first.sort_at, // paginate by the thread's sort key, not created_at
       p_limit: 50,
     });
     const rows = (data ?? []) as ThreadMessage[];
@@ -314,6 +314,7 @@ export function ChatThread({
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random()}`;
 
+    const nowIso = new Date().toISOString();
     const optimistic: ThreadMessage = {
       id: clientId,
       sender_player_id: myPlayerId,
@@ -321,7 +322,9 @@ export function ChatThread({
       sender_handle: null,
       body,
       deleted: false,
-      created_at: new Date().toISOString(),
+      created_at: nowIso,
+      sort_at: nowIso,
+      from_match_id: null,
     };
     setMessages((m) => [...m, optimistic]);
     pinned.current = true; // sending always scrolls you down
@@ -441,10 +444,11 @@ export function ChatThread({
             </div>
           </div>
         ) : (
-          rows.map((row) =>
-            row.kind === "day" ? (
-              <DayDivider key={`d-${row.label}`} label={row.label} />
-            ) : (
+          rows.map((row) => {
+            if (row.kind === "day") return <DayDivider key={`d-${row.label}`} label={row.label} />;
+            if (row.kind === "match")
+              return <MatchDivider key={`fm-${row.id}`} label={row.label} />;
+            return (
               <MessageRow
                 key={row.m.id}
                 m={row.m}
@@ -462,8 +466,8 @@ export function ChatThread({
                 onRetry={() => row.m.body && void postMessage(row.m.body, row.m.id)}
                 onOpenMenu={() => setMenuFor(row.m.id)}
               />
-            ),
-          )
+            );
+          })
         )}
       </div>
 
@@ -625,6 +629,17 @@ function DayDivider({ label }: { label: string }) {
     <div className="flex items-center gap-2 py-2">
       <div className="h-px flex-1 bg-border" />
       <span className="eyebrow text-[9px] text-muted-foreground">{label}</span>
+      <div className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+
+/** [Q5] Once at the top of a rolled-up match block — chart-5 to match the inbox chip. */
+function MatchDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 py-2">
+      <div className="h-px flex-1 bg-border" />
+      <span className="eyebrow text-[9px] text-chart-5">{label}</span>
       <div className="h-px flex-1 bg-border" />
     </div>
   );

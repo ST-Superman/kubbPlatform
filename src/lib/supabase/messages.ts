@@ -24,6 +24,7 @@ export type LastMessage = {
   body: string | null; // null when the last message was deleted
   created_at: string;
   sender_player_id: string;
+  sender_display_name: string | null;
 };
 
 export type ConversationSummary = {
@@ -32,9 +33,11 @@ export type ConversationSummary = {
   title: string | null;
   match_id: string | null;
   muted: boolean;
-  other: ConversationOther | null; // populated for DMs
+  other: ConversationOther | null; // populated for DMs and match rows (the opponent)
   last_message: LastMessage | null;
   last_at: string | null;
+  member_count: number;
+  blocked: boolean; // dm/match: a block exists in either direction
   unread: number;
 };
 
@@ -46,6 +49,8 @@ export type ThreadMessage = {
   body: string | null; // null when deleted
   deleted: boolean;
   created_at: string;
+  sort_at: string; // thread ordering key (= created_at, or the match anchor for rolled-up messages)
+  from_match_id: string | null; // set when this message was rolled up from a match
 };
 
 export type DmEmailCadence = "in_app" | "daily" | "weekly";

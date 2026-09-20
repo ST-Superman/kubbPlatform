@@ -12,6 +12,7 @@ import type { ThreadMessage } from "@/lib/supabase/messages";
  */
 export type Row =
   | { kind: "day"; label: string }
+  | { kind: "match"; label: string; id: string }
   | { kind: "msg"; m: ThreadMessage; first: boolean; last: boolean };
 
 const FIVE_MIN = 5 * 60_000;
@@ -44,9 +45,15 @@ export function timeLabel(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
+/** "FROM MATCH · SEP 14" — shown once at the top of a rolled-up match block. */
+export function matchLabel(d: Date): string {
+  return `FROM MATCH · ${d.toLocaleDateString([], { month: "short", day: "numeric" }).toUpperCase()}`;
+}
+
 export function toRows(messages: ThreadMessage[]): Row[] {
   const out: Row[] = [];
   let day = "";
+  let matchId: string | null = null;
 
   messages.forEach((m, i) => {
     const at = new Date(m.created_at);
@@ -55,6 +62,11 @@ export function toRows(messages: ThreadMessage[]): Row[] {
       day = key;
       out.push({ kind: "day", label: dayLabel(at) });
     }
+    // A rolled-up match block gets one "FROM MATCH" divider at its start.
+    if (m.from_match_id && m.from_match_id !== matchId) {
+      out.push({ kind: "match", label: matchLabel(at), id: m.from_match_id });
+    }
+    matchId = m.from_match_id ?? null;
     out.push({
       kind: "msg",
       m,

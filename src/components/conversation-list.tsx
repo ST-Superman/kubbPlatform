@@ -13,7 +13,13 @@ import { cn } from "@/lib/utils";
  * live: subscribes to each `conv:<id>` broadcast and refreshes the server component
  * on any new message (debounced) — same idea as matches-realtime.tsx.
  */
-export function ConversationList({ initial }: { initial: ConversationSummary[] }) {
+export function ConversationList({
+  initial,
+  myPlayerId,
+}: {
+  initial: ConversationSummary[];
+  myPlayerId: string | null;
+}) {
   const router = useRouter();
   const key = initial.map((c) => c.conversation_id).join(",");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -60,11 +66,26 @@ export function ConversationList({ initial }: { initial: ConversationSummary[] }
           c.type === "dm"
             ? c.other?.display_name ?? "Player"
             : c.type === "match"
-              ? "Match chat"
+              ? c.other?.display_name ?? "Match chat" // [F13] opponent's name, not "Match chat"
               : c.title ?? "Group";
-        const preview = c.last_message
-          ? c.last_message.body ?? "Message removed"
-          : "No messages yet";
+        let preview: string;
+        if (c.blocked) {
+          preview = "Blocked — unblock in settings";
+        } else if (!c.last_message) {
+          preview = "No messages yet";
+        } else {
+          const body = c.last_message.body ?? "Message removed";
+          // [F13] Sender prefix on group/match previews so it's clear who spoke.
+          if (c.type === "group" || c.type === "match") {
+            const who =
+              c.last_message.sender_player_id === myPlayerId
+                ? "You"
+                : (c.last_message.sender_display_name ?? "Someone");
+            preview = `${who}: ${body}`;
+          } else {
+            preview = body;
+          }
+        }
         return (
           // [F13] Unread reads as rail + tint + weight — legible without relying on weight alone.
           <li
@@ -72,6 +93,7 @@ export function ConversationList({ initial }: { initial: ConversationSummary[] }
             className={cn(
               "border-l-[3px]",
               c.unread > 0 ? "border-l-primary bg-primary/5" : "border-l-transparent",
+              c.blocked && "opacity-60", // [F13] blocked stays listed but dimmed
             )}
           >
             <Link
@@ -90,7 +112,7 @@ export function ConversationList({ initial }: { initial: ConversationSummary[] }
                     >
                       {name}
                     </span>
-                    <TypeChip type={c.type} />
+                    <TypeChip type={c.type} count={c.member_count} />
                   </div>
                   {c.last_at ? (
                     <span className="shrink-0 text-[11px] text-muted-foreground">
@@ -123,7 +145,7 @@ export function ConversationList({ initial }: { initial: ConversationSummary[] }
 }
 
 /** [F13] What kind of conversation this is — so "Match chat" isn't the only cue. */
-function TypeChip({ type }: { type: ConversationType }) {
+function TypeChip({ type, count }: { type: ConversationType; count: number }) {
   if (type === "match")
     return (
       <span className="shrink-0 rounded bg-chart-5/10 px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wide text-chart-5 uppercase">
@@ -133,7 +155,7 @@ function TypeChip({ type }: { type: ConversationType }) {
   if (type === "group")
     return (
       <span className="shrink-0 rounded bg-forest/10 px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wide text-forest uppercase">
-        Group
+        {count > 0 ? `Group · ${count}` : "Group"}
       </span>
     );
   return null;

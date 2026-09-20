@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
-import { getMyConversations } from "@/lib/supabase/messages";
+import { getMyConversations, getMyPlayerId } from "@/lib/supabase/messages";
 import { ConversationList } from "@/components/conversation-list";
 
 /** Inbox — the signed-in user's conversations. */
@@ -13,7 +13,10 @@ export default async function MessagesPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?redirectTo=/messages");
 
-  const conversations = await getMyConversations();
+  const [conversations, myPlayerId] = await Promise.all([
+    getMyConversations(),
+    getMyPlayerId(),
+  ]);
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-10 sm:py-14">
@@ -32,7 +35,7 @@ export default async function MessagesPage() {
           New group
         </Link>
       </div>
-      <ConversationList initial={conversations} />
+      <ConversationList initial={conversations} myPlayerId={myPlayerId} />
     </div>
   );
 }
