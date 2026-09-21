@@ -160,7 +160,7 @@ export function MatchClient({
       const convId = data as string | null;
       if (cancelled || !convId) return;
       channel = supabase
-        .channel(`conv:${convId}:matchdot`)
+        .channel(`conv:${convId}`)
         .on("broadcast", { event: "message" }, () => {
           if (sheetRef.current !== "chat") setUnseen((n) => n + 1);
         })
